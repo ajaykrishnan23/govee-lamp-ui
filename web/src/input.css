@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@source "../static";
+@plugin "daisyui";
+
+/* woodshed palette */
+@plugin "daisyui/theme" {
+  name: "woodshed";
+  default: true;
+  prefersdark: true;
+  color-scheme: dark;
+
+  --color-base-100: #14151a;
+  --color-base-200: #1b1d24;
+  --color-base-300: #20222b;
+  --color-base-content: #ece7db;
+
+  --color-primary: #5fb894;
+  --color-primary-content: #14151a;
+  --color-secondary: #e0a458;
+  --color-secondary-content: #14151a;
+  --color-accent: #cd6b4a;
+  --color-accent-content: #ece7db;
+  --color-neutral: #262933;
+  --color-neutral-content: #ece7db;
+
+  --color-info: #5fb894;
+  --color-info-content: #14151a;
+  --color-success: #5fb894;
+  --color-success-content: #14151a;
+  --color-warning: #e0a458;
+  --color-warning-content: #14151a;
+  --color-error: #cd6b4a;
+  --color-error-content: #ece7db;
+
+  --radius-box: 12px;
+  --radius-field: 8px;
+  --radius-selector: 8px;
+}
+
+/* woodshed tokens, section A (for the few non-daisy bits) */
+:root {
+  --ink: #14151a;
+  --panel: #20222b;
+  --line: #33363f;
+  --paper: #ece7db;
+  --paper-dim: #a7a394;
+  --paper-faint: #6f6d64;
+  --green: #5fb894;
+  --amber: #e0a458;
+  --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--ink);
+    background-image:
+      radial-gradient(1100px 600px at 12% -8%, color-mix(in srgb, var(--green) 10%, transparent), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, color-mix(in srgb, var(--amber) 7%, transparent), transparent 55%);
+    background-attachment: fixed;
+  }
+  [x-cloak] { display: none !important; }
+}
+
+@layer components {
+  .font-serif-ws { font-family: var(--serif); }
+  .text-dim { color: var(--paper-dim); }
+  .text-faint { color: var(--paper-faint); }
+  .border-line { border-color: var(--line); }
+
+  /* the paper lamp preview: two stacked glows behind a ribbed shade */
+  .lamp {
+    position: relative;
+    width: 7.5rem;
+    height: 12.5rem;
+    border-radius: 45% 45% 18% 18% / 12% 12% 8% 8%;
+    background:
+      repeating-linear-gradient(to bottom, transparent 0 9px, color-mix(in srgb, var(--ink) 18%, transparent) 9px 10px),
+      linear-gradient(to bottom, var(--top-glow), var(--bottom-glow));
+    box-shadow:
+      0 -30px 70px -10px var(--top-halo),
+      0 30px 80px -5px var(--bottom-halo),
+      inset 0 0 25px color-mix(in srgb, var(--ink) 35%, transparent);
+    transition: background 0.4s ease, box-shadow 0.4s ease;
+  }
+  .lamp-pole {
+    width: 3px;
+    height: 1.75rem;
+    margin: 0 auto;
+    background: var(--line);
+  }
+  .lamp-base {
+    width: 3.5rem;
+    height: 6px;
+    margin: 0 auto;
+    border-radius: 3px;
+    background: var(--line);
+  }
+  .swatch { background: var(--swatch); }
+  .mic-live { animation: mic 1.2s ease-in-out infinite; }
+  @keyframes mic {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent); }
+    50% { box-shadow: 0 0 0 10px transparent; }
+  }
+}

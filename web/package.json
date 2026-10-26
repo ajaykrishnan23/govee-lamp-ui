@@ -1,0 +1,17 @@
+{
+  "name": "lamp-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tailwindcss -i src/input.css -o static/app.css --minify && cp node_modules/alpinejs/dist/cdn.min.js static/vendor/alpine.min.js",
+    "watch": "tailwindcss -i src/input.css -o static/app.css --watch",
+    "shot": "node ../tools/shot.mjs"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "alpinejs": "^3.17.5",
+    "daisyui": "^5.7.50",
+    "playwright": "^1.64.1",
+    "tailwindcss": "^4.3.3"
+  }
+}

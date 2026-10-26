@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en" data-theme="woodshed">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Lamp</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script defer src="/static/app.js"></script>
+  <script defer src="/static/vendor/alpine.min.js"></script>
+</head>
+<body class="min-h-dvh text-base-content" x-data="lampApp()" x-init="init()">
+  <div class="mx-auto max-w-5xl px-4 pt-4 pb-40 md:pb-32">
+
+    <!-- header -->
+    <header class="flex items-center justify-between gap-3 py-2">
+      <div class="flex items-baseline gap-3">
+        <h1 class="font-serif-ws text-3xl">Lamp</h1>
+        <span class="badge badge-sm" :class="activityBadge()" x-text="activityLabel()"></span>
+        <span class="badge badge-sm badge-error" x-show="!connected" x-cloak>offline</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="btn btn-ghost btn-square btn-sm" @click="settingsOpen = true" aria-label="Settings">
+          <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+        <input type="checkbox" class="toggle toggle-primary toggle-lg" aria-label="Lamp on/off"
+               :checked="anyOn()" @change="power('all', $event.target.checked)">
+      </div>
+    </header>
+
+    <div class="grid gap-4 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:items-start mt-2">
+
+      <!-- lamp preview + direct controls -->
+      <section class="card bg-base-300/80 border border-line">
+        <div class="card-body gap-5">
+          <div class="flex items-center justify-center gap-8 py-3">
+            <div>
+              <div class="lamp" :style="lampStyle()"></div>
+              <div class="lamp-pole"></div>
+              <div class="lamp-base"></div>
+            </div>
+            <ul class="text-sm space-y-3">
+              <template x-for="name in names" :key="name">
+                <li class="flex items-center gap-2">
+                  <span class="swatch size-4 rounded-full border border-line" :style="`--swatch:${displayColor(name)}`"></span>
+                  <span class="capitalize" x-text="name"></span>
+                  <span class="text-faint whitespace-nowrap" x-text="describe(name)"></span>
+                </li>
+              </template>
+              <li class="text-faint" x-show="!names.length">No bulbs found yet</li>
+            </ul>
+          </div>
+
+          <div class="join w-full" role="group" aria-label="Which bulb">
+            <button class="btn btn-sm join-item flex-1" :class="target === 'all' && 'btn-primary'" @click="target = 'all'">Both</button>
+            <template x-for="name in names" :key="name">
+              <button class="btn btn-sm join-item flex-1 capitalize" :class="target === name && 'btn-primary'"
+                      @click="target = name" x-text="name"></button>
+            </template>
+          </div>
+
+          <label class="flex flex-col gap-2">
+            <span class="flex justify-between text-sm"><span class="text-dim">Brightness</span><span x-text="sliderValue + '%'"></span></span>
+            <input type="range" min="1" max="100" class="range range-primary range-sm"
+                   x-model.number="sliderValue" @input="setBrightness(target, sliderValue)">
+          </label>
+
+          <div class="flex flex-col gap-2">
+            <span class="text-dim text-sm">Color</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <label class="btn btn-sm btn-outline gap-2">
+                <span class="swatch size-4 rounded-full" :style="`--swatch:${pickerHex}`"></span> Pick
+                <input type="color" class="sr-only" x-model="pickerHex" @input="setColor(target, pickerHex)">
+              </label>
+              <template x-for="k in [2700, 4000, 6500]" :key="k">
+                <button class="btn btn-sm btn-ghost border border-line gap-2" @click="setKelvin(target, k)">
+                  <span class="swatch size-3 rounded-full" :style="`--swatch:${kelvinCss(k)}`"></span><span x-text="k + 'K'"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="flex flex-col gap-4">
+        <!-- moods -->
+        <section class="card bg-base-300/80 border border-line">
+          <div class="card-body gap-3">
+            <div class="flex items-center justify-between">
+              <h2 class="font-serif-ws text-xl">Moods</h2>
+              <button class="btn btn-xs btn-ghost" x-show="activity !== 'idle'" x-cloak @click="stop()">Stop effect</button>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="p in presets" :key="p.name">
+                <div class="relative">
+                  <button class="btn btn-sm capitalize" :class="p.builtin ? 'btn-neutral' : 'btn-secondary btn-outline'"
+                          :title="p.description" @click="applyPreset(p.name)" x-text="p.name"></button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </section>
+
+        <!-- song (placeholder until song mode) -->
+        <section class="card bg-base-300/80 border border-line" x-show="song && song.state !== 'unavailable'" x-cloak>
+          <div class="card-body gap-2">
+            <h2 class="font-serif-ws text-xl">Now playing</h2>
+            <p class="text-dim text-sm" x-text="song?.track ? song.track.title : 'Nothing playing'"></p>
+          </div>
+        </section>
+
+        <!-- log -->
+        <section class="card bg-base-300/80 border border-line">
+          <div class="card-body gap-3">
+            <h2 class="font-serif-ws text-xl">Ask the lamp</h2>
+            <p class="text-dim text-sm" x-show="!log.length">Try “warm cozy cuddly lights”, “make it feel like studying”, or “fade off over 20 minutes”.</p>
+            <ul class="flex flex-col gap-3" x-show="log.length" x-cloak>
+              <template x-for="(e, i) in log" :key="i">
+                <li class="flex flex-col gap-1">
+                  <span class="text-sm">“<span x-text="e.text"></span>”</span>
+                  <span class="text-sm flex items-start gap-2">
+                    <span class="badge badge-xs mt-1" :class="e.via === 'ai' ? 'badge-primary' : 'badge-ghost'" x-text="e.via"></span>
+                    <span :class="e.error ? 'text-error' : 'text-dim'" x-text="e.reply"></span>
+                  </span>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <footer class="text-faint text-xs mt-6 text-center" x-show="budget" x-cloak>
+      <span x-show="!budget?.blocked">AI: <span x-text="money(budget?.spent)"></span> of <span x-text="money(budget?.cap)"></span> this month</span>
+      <span class="text-warning" x-show="budget?.blocked">AI budget reached — quick commands and moods still work</span>
+    </footer>
+  </div>
+
+  <!-- prompt bar, pinned to the bottom -->
+  <form class="fixed inset-x-0 bottom-0 border-t border-line bg-base-200/95 backdrop-blur"
+        style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))"
+        @submit.prevent="send(draft)">
+    <div class="mx-auto max-w-5xl px-4 pt-3 flex items-center gap-2">
+      <button type="button" class="btn btn-circle" :class="listening ? 'btn-accent mic-live' : 'btn-neutral'"
+              @click="toggleMic()" aria-label="Speak">
+        <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <input class="input w-full" placeholder="Tell the lamp what you want…" x-model="draft" :disabled="busy"
+             enterkeyhint="send" autocomplete="off">
+      <button class="btn btn-primary" :disabled="busy || !draft.trim()">
+        <span class="loading loading-spinner loading-sm" x-show="busy" x-cloak></span>
+        <span x-show="!busy">Send</span>
+      </button>
+    </div>
+    <p class="mx-auto max-w-5xl px-4 pt-1 text-xs text-faint" x-show="micNote" x-text="micNote" x-cloak></p>
+  </form>
+
+  <!-- settings -->
+  <dialog class="modal modal-bottom sm:modal-middle" :open="settingsOpen" @keydown.escape="settingsOpen = false">
+    <div class="modal-box bg-base-300 border border-line">
+      <h3 class="font-serif-ws text-xl mb-4">Settings</h3>
+      <div class="flex flex-col gap-3">
+        <span class="text-dim text-sm">Bulb names</span>
+        <template x-for="name in names" :key="name">
+          <form class="join w-full" @submit.prevent="rename(name, $event.target.elements.n.value)">
+            <input name="n" class="input input-sm join-item w-full" :value="name">
+            <button class="btn btn-sm join-item">Rename</button>
+          </form>
+        </template>
+        <div class="flex gap-2 mt-2">
+          <button class="btn btn-sm" @click="post('/api/bulbs/swap')">Swap top / bottom</button>
+          <button class="btn btn-sm" @click="post('/api/bulbs/rediscover').then(load)">Find bulbs again</button>
+        </div>
+      </div>
+      <div class="modal-action"><button class="btn" @click="settingsOpen = false">Done</button></div>
+    </div>
+    <div class="modal-backdrop" @click="settingsOpen = false"></div>
+  </dialog>
+
+  <div class="toast toast-top toast-center z-50" x-show="toast" x-cloak>
+    <div class="alert alert-error text-sm" x-text="toast"></div>
+  </div>
+</body>
+</html>

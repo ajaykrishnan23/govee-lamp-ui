@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en" data-theme="woodshed">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Lamp</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script defer src="/static/vendor/alpine.min.js"></script>
+</head>
+<body class="min-h-dvh flex items-center justify-center p-6">
+  <form class="card bg-base-300 border border-line w-full max-w-sm" x-data="{ pw: '', err: '', busy: false }"
+        @submit.prevent="busy = true; err = '';
+          fetch('/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: pw }) })
+            .then(r => r.ok ? location.replace('/') : (err = 'Wrong password'))
+            .catch(() => err = 'Can’t reach the lamp server')
+            .finally(() => busy = false)">
+    <div class="card-body gap-4">
+      <h1 class="font-serif-ws text-3xl">Lamp</h1>
+      <p class="text-dim text-sm">Enter the password from your <code>.env</code>.</p>
+      <input class="input input-lg w-full" type="password" autocomplete="current-password" placeholder="Password"
+             x-model="pw" autofocus required>
+      <p class="text-error text-sm" x-show="err" x-text="err" x-cloak></p>
+      <button class="btn btn-primary btn-lg" :disabled="busy || !pw">
+        <span class="loading loading-spinner loading-sm" x-show="busy" x-cloak></span>Unlock
+      </button>
+    </div>
+  </form>
+</body>
+</html>
