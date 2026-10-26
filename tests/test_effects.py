@@ -116,3 +116,15 @@ async def test_background_loop_ticks(tmp_path):
 def test_later_cue_interrupts_running_fade():
     tl = Timeline(cues=[Cue(t_ms=0, rgb=(200, 0, 0), fade_ms=1000), Cue(t_ms=500, rgb=(0, 0, 9))], duration_ms=2000)
     assert state_at(tl, 600, START)["top"].rgb == (0, 0, 9)
+
+
+def test_loop_restarts_from_its_own_end_state_not_pre_effect_state():
+    # ocean-style: fade in from whatever was on, then drift; the 2nd pass must not snap back to the old color
+    tl = Timeline(cues=[Cue(t_ms=0, rgb=(0, 90, 255), fade_ms=5000),
+                        Cue(t_ms=10_000, rgb=(0, 200, 170), fade_ms=9000)], duration_ms=20_000, loop=True)
+    warm = {"top": LightState(kelvin=2700, brightness=80)}
+    first_end = state_at(tl, 19_999, warm)["top"]
+    just_after_wrap = state_at(tl, 20_010, warm)["top"]
+    assert first_end.rgb == (0, 200, 170)
+    assert just_after_wrap.kelvin is None
+    assert just_after_wrap.rgb == (0, 200, 170)  # starts fading toward blue from teal, not from warm white

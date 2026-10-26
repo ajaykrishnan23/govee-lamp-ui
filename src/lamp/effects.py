@@ -65,7 +65,9 @@ def _blend(a: LightState, b: LightState, f: float) -> LightState:
 
 
 def state_at(timeline: Timeline, t_ms: float, start: dict[str, LightState]) -> dict[str, LightState]:
-    if timeline.loop:
+    if timeline.loop and t_ms >= timeline.duration_ms:
+        # later passes continue from where the loop ended, not from the pre-effect look
+        start = state_at(timeline.model_copy(update={"loop": False}), timeline.duration_ms, start)
         t_ms %= timeline.duration_ms
     cues = sorted(timeline.cues, key=lambda c: c.t_ms)
     out = {}
