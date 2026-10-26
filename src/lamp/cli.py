@@ -7,7 +7,22 @@ import socket
 import subprocess
 import sys
 
-from .config import get_settings
+from pydantic import ValidationError
+
+from . import config
+
+
+def load_settings() -> config.Settings:
+    """Settings, or a short readable exit (never echoing values: they include API keys)."""
+    try:
+        return config.get_settings()
+    except ValidationError as e:
+        lines = []
+        for err in e.errors():
+            name = str(err["loc"][0]).upper() if err["loc"] else "?"
+            reason = "is missing" if err["type"] == "missing" else f"is invalid ({err['msg']})"
+            lines.append(f"  {name} {reason}")
+        sys.exit(f"Problem with settings in {config.ENV_FILE}:\n" + "\n".join(lines))
 
 
 def _lan_ip() -> str:
@@ -32,7 +47,7 @@ def cmd_serve(_args) -> None:
 
     from .runtime import build_app
 
-    s = get_settings()
+    s = load_settings()
     app, _ = build_app(s, keep_awake=True)
     cert, key = s.certs_dir / "lamp.pem", s.certs_dir / "lamp-key.pem"
     ssl = {"ssl_certfile": str(cert), "ssl_keyfile": str(key)} if cert.exists() and key.exists() else {}
@@ -56,7 +71,7 @@ def cmd_discover(_args) -> None:
 def cmd_certs(_args) -> None:
     if not shutil.which("mkcert"):
         sys.exit("mkcert not found: brew install mkcert")
-    s = get_settings()
+    s = load_settings()
     s.certs_dir.mkdir(parents=True, exist_ok=True)
     subprocess.run(["mkcert", "-install"], check=True)
     names = [_hostname(), _lan_ip(), "localhost", "127.0.0.1"]
