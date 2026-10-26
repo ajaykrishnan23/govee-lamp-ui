@@ -5,7 +5,7 @@ Status: approved by Ajay 2026-10-25
 
 ## Provider change (2026-10-25, decided by Ajay)
 
-**The AI provider is OpenAI, not Claude.** Ajay supplied `OPENAI_API_KEY`. Wherever this doc says "Claude" or "Claude API", read it as OpenAI via the Responses API, with function tools and structured outputs. Default models: `gpt-6.1-sol` for show writing and for mood prompts (low reasoning effort for prompts, to keep them snappy). `gpt-6-luna` is the cheap fallback. All are configurable. The budget cap uses OpenAI prices. Secrets: `OPENAI_API_KEY` replaces `ANTHROPIC_API_KEY`.
+**The AI provider is OpenAI, not Claude.** Ajay supplied `OPENAI_API_KEY`. Wherever this doc says "Claude" or "Claude API", read it as OpenAI via the Responses API, with function tools and structured outputs. Default models: `gpt-6-luna` for both prompts and shows (Ajay: "use 6-luna"). `gpt-6.1-sol` is the configurable upgrade. All are configurable. The budget cap uses OpenAI prices. Secrets: `OPENAI_API_KEY` replaces `ANTHROPIC_API_KEY`.
 
 ## Intent
 

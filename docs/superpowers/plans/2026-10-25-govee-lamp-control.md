@@ -39,7 +39,7 @@ Ajay: "if you can't do song stuff it's fine, we can come to that later." Build T
   - Mobile-first.
   - Run the screenshot loop (`tools/shot.mjs`) at 390x844 and 1280x800.
 - Frontend libraries are vendored or compiled locally, with no runtime CDN.
-- **AI provider is OpenAI (Ajay's decision), not Claude.** Use the `openai` Python SDK's **Responses API** with function tools and structured outputs. Use Exa (`mcp__exa__web_fetch_exa` on `https://developers.openai.com/api/docs/...`) for current SDK docs; don't use the `claude-api` skill. Default models: `prompt_model="gpt-6.1-sol"` (reasoning effort low) and `show_model="gpt-6.1-sol"` (reasoning effort medium); `gpt-6-luna` is the cheap alternative.
+- **AI provider is OpenAI (Ajay's decision), not Claude.** Use the `openai` Python SDK's **Responses API** with function tools and structured outputs. Use Exa (`mcp__exa__web_fetch_exa` on `https://developers.openai.com/api/docs/...`) for current SDK docs; don't use the `claude-api` skill. Default models (Ajay: "use 6-luna"): `prompt_model="gpt-6-luna"` (reasoning effort low) and `show_model="gpt-6-luna"` (reasoning effort medium). `gpt-6.1-sol` is the smarter option if shows feel weak; both are configurable.
 - Bash sandbox note for the executor: UDP multicast, binding `0.0.0.0`, and calls to the Spotify/OpenAI/YouTube hosts may need `allowed_domains` or a sandbox-off retry. Hardware steps need the real LAN.
 
 ## Review Focus
@@ -102,7 +102,7 @@ data/  certs/                  runtime, git-ignored
 - Produces:
   - `Settings` (pydantic-settings, `.env`) with fields:
     - `openai_api_key: str = ""`, `spotify_client_id: str = ""`, `spotify_client_secret: str = ""`, `app_password: str`
-    - `monthly_budget_usd: float = 10.0`, `prompt_model = "gpt-6.1-sol"`, `show_model = "gpt-6.1-sol"`
+    - `monthly_budget_usd: float = 10.0`, `prompt_model = "gpt-6-luna"`, `show_model = "gpt-6-luna"`
     - `host = "0.0.0.0"`, `port = 8443`, `data_dir: Path = Path("data")`, `certs_dir: Path = Path("certs")`
     - `max_updates_per_sec: float = 10.0`, `sync_offset_ms: int = 0`
     - `get_settings() -> Settings`
