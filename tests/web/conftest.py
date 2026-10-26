@@ -21,9 +21,10 @@ def ai():
 
 
 @pytest.fixture
-async def app_env(settings, ai):
+async def app_env(settings, ai, transcriber):
     transport = FakeTransport()
-    app, svc = build_app(settings, transport=transport, ai_client=ai, discover_fn=fake_discover(A, B))
+    app, svc = build_app(settings, transport=transport, ai_client=ai, discover_fn=fake_discover(A, B),
+                         transcriber=transcriber)
     async with app.router.lifespan_context(app):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://test") as client:
             yield client, svc, transport
@@ -35,3 +36,19 @@ async def authed(app_env):
     r = await client.post("/login", json={"password": "pw-123"})
     assert r.status_code == 200
     return client, svc, transport
+
+
+class FakeTranscriber:
+    def __init__(self, text="lights off"):
+        self.text = text
+        self.paths = []
+
+    def transcribe(self, path):
+        self.paths.append(path)
+        assert path.exists()
+        return self.text
+
+
+@pytest.fixture
+def transcriber():
+    return FakeTranscriber()

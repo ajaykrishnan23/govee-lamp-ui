@@ -108,3 +108,26 @@ async def test_event_stream_format(authed):
     first = await gen.__anext__()
     assert first == 'event: hello\ndata: {"a": 1}\n\n'
     await gen.aclose()
+
+
+async def test_voice_endpoint_transcribes_then_prompts(authed, transcriber, ai):
+    client, svc, _ = authed
+    r = await client.post("/api/voice", files={"audio": ("clip.m4a", b"\x00" * 1000, "audio/mp4")})
+    body = r.json()
+    assert r.status_code == 200
+    assert body["text"] == "lights off" and body["via"] == "instant"
+    assert ai.calls == []
+    assert not transcriber.paths[0].exists()  # temp clip cleaned up
+
+
+async def test_voice_rejects_oversize(authed):
+    client, _, _ = authed
+    r = await client.post("/api/voice", files={"audio": ("clip.m4a", b"\x00" * (2 * 1024 * 1024 + 1), "audio/mp4")})
+    assert r.status_code == 413
+
+
+async def test_voice_empty_transcript(authed, transcriber):
+    client, _, _ = authed
+    transcriber.text = "  "
+    r = await client.post("/api/voice", files={"audio": ("clip.webm", b"\x00" * 10, "audio/webm")})
+    assert r.status_code == 200 and r.json()["error"] == "heard nothing"

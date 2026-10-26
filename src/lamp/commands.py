@@ -38,7 +38,7 @@ def parse_command(text: str, preset_names: list[str]) -> Command | None:
     for pattern, kind in _PATTERNS:
         if re.fullmatch(pattern, t):
             return Command(kind)
-    stripped = re.sub(r"^(?:set |switch to |go |put on )|(?: mode| lights| please)$", "", t).strip()
+    stripped = re.sub(r"^(?:make it |set it to |set |switch to |go |put on |turn on )?(?:the |a )?|(?: mode| mood| lights| please)$", "", t).strip()
     for name in preset_names:
         if _norm(name) in (t, stripped):
             return Command("preset", name)

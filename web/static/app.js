@@ -42,6 +42,9 @@ window.lampApp = () => ({
   connected: true,
   settingsOpen: false,
   toast: '',
+  recognizer: null,
+  recorder: null,
+  forceRecorder: false,
 
   async init() {
     this.sendBrightness = debounce((t, v) => this.post('/api/brightness', { target: t, value: v }), 120);
@@ -178,8 +181,102 @@ window.lampApp = () => ({
     }
   },
 
-  // voice input lives in Task 10
+  // ---- voice: browser speech recognition first, on-device Whisper fallback ----
   toggleMic() {
-    this.micNote = 'Voice input is coming next.';
+    if (this.listening) return this.stopMic();
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR && !this.forceRecorder) return this.startRecognition(SR);
+    return this.startRecorder();
+  },
+
+  startRecognition(SR) {
+    const rec = new SR();
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    let finalText = '';
+    rec.onresult = e => {
+      const r = e.results[e.results.length - 1];
+      this.draft = r[0].transcript;
+      if (r.isFinal) finalText = r[0].transcript;
+    };
+    rec.onerror = e => {
+      if (['not-allowed', 'service-not-allowed', 'network', 'audio-capture'].includes(e.error)) {
+        this.forceRecorder = true; // remember: this browser's recognizer doesn't work here
+        this.listening = false;
+        this.micNote = 'Using on-device transcription instead…';
+        this.startRecorder();
+      } else if (e.error !== 'aborted' && e.error !== 'no-speech') {
+        this.flash(`Mic error: ${e.error}`);
+      }
+    };
+    rec.onend = () => {
+      if (this.recognizer !== rec) return;
+      this.listening = false;
+      this.recognizer = null;
+      if (finalText.trim()) this.send(finalText);
+    };
+    this.recognizer = rec;
+    this.listening = true;
+    this.micNote = 'Listening…';
+    rec.start();
+  },
+
+  async startRecorder() {
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      this.micNote = '';
+      return this.flash('This browser can’t record audio here (is the page on https?)');
+    }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      this.micNote = '';
+      return this.flash('Microphone permission was denied');
+    }
+    const type = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+    const rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    const chunks = [];
+    rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+    rec.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      clearTimeout(this.recTimer);
+      this.listening = false;
+      this.recorder = null;
+      const blob = new Blob(chunks, { type: rec.mimeType || type || 'audio/webm' });
+      if (!blob.size) return (this.micNote = '');
+      await this.uploadVoice(blob);
+    };
+    this.recorder = rec;
+    this.listening = true;
+    this.micNote = 'Recording… tap the mic again when you’re done';
+    rec.start();
+    this.recTimer = setTimeout(() => this.stopMic(), 15000);
+  },
+
+  stopMic() {
+    if (this.recognizer) this.recognizer.stop();
+    if (this.recorder && this.recorder.state !== 'inactive') this.recorder.stop();
+  },
+
+  async uploadVoice(blob) {
+    this.busy = true;
+    this.micNote = 'Transcribing…';
+    const ext = blob.type.includes('mp4') ? 'm4a' : 'webm';
+    const form = new FormData();
+    form.append('audio', blob, `clip.${ext}`);
+    try {
+      const r = await fetch('/api/voice', { method: 'POST', body: form });
+      if (r.status === 401) return location.replace('/login');
+      const data = await r.json();
+      if (!r.ok) return this.flash(data.error ?? 'Voice upload failed');
+      if (data.text) this.addLog(data);
+      else this.flash(data.reply || 'Didn’t catch that');
+    } catch {
+      this.flash('Can’t reach the lamp server');
+    } finally {
+      this.busy = false;
+      this.micNote = '';
+    }
   },
 });

@@ -15,6 +15,7 @@ from .effects import ActivityManager, MonotonicClock
 from .govee.transport import GoveeTransport
 from .lamp import Lamp
 from .presets import PresetStore
+from .voice import Transcriber
 from .web.app import create_app
 from .web.auth import SessionSigner
 from .web.events import EventBus
@@ -33,6 +34,7 @@ class Services:
     budget: Budget
     bus: EventBus
     signer: SessionSigner
+    transcriber: object
 
     def snapshot(self) -> dict:
         return {
@@ -61,7 +63,8 @@ class Services:
         return out
 
 
-def build_services(settings: Settings, transport=None, ai_client=None, discover_fn=None) -> Services:
+def build_services(settings: Settings, transport=None, ai_client=None, discover_fn=None,
+                   transcriber=None) -> Services:
     d = settings.data_dir
     transport = transport or GoveeTransport(settings.max_updates_per_sec)
     lamp = Lamp(transport, d / "bulbs.json", discover_fn=discover_fn)
@@ -72,7 +75,7 @@ def build_services(settings: Settings, transport=None, ai_client=None, discover_
     agent = PromptAgent(client, settings.prompt_model, ctl, budget)
     bus = EventBus()
     svc = Services(settings, transport, lamp, activity, ctl, agent, budget, bus,
-                   SessionSigner(d / "secret.key", settings.app_password))
+                   SessionSigner(d / "secret.key", settings.app_password), transcriber or Transcriber())
     lamp.on_change(lambda s: bus.publish("state", {n: v.to_dict() for n, v in s.items()}))
     activity.on_kind_change(lambda k: bus.publish("activity", {"kind": k}))
     return svc
@@ -89,6 +92,8 @@ def build_app(settings: Settings, **overrides):
             await svc.lamp.refresh()
         except Exception:
             log.exception("initial bulb discovery failed")
+        if hasattr(svc.transcriber, "_load"):  # warm the fallback model so the first voice clip isn't slow
+            asyncio.get_running_loop().run_in_executor(None, svc.transcriber._load)
         yield
         await svc.activity.stop()
         if hasattr(svc.transport, "close"):

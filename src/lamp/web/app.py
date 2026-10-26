@@ -1,9 +1,12 @@
 """HTTP routes: login, quick controls, prompts, live events, static UI."""
+import asyncio
 import functools
 import logging
+import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -14,6 +17,8 @@ if TYPE_CHECKING:
     from ..runtime import Services
 
 log = logging.getLogger(__name__)
+
+MAX_VOICE_BYTES = 2 * 1024 * 1024
 
 
 class Login(BaseModel):
@@ -131,6 +136,24 @@ def create_app(svc: "Services", lifespan=None) -> FastAPI:
     @app.post("/api/prompt", dependencies=[api])
     async def prompt(body: Prompt):
         return await svc.handle_prompt(body.text)
+
+    @app.post("/api/voice", dependencies=[api])
+    async def voice(audio: UploadFile = File(...)):
+        data = await audio.read(MAX_VOICE_BYTES + 1)
+        if len(data) > MAX_VOICE_BYTES:
+            raise HTTPException(413, "clip too long")
+        suffix = Path(audio.filename or "clip.webm").suffix or ".webm"
+        with tempfile.NamedTemporaryFile(suffix=suffix) as f:
+            f.write(data)
+            f.flush()
+            try:
+                text = await asyncio.to_thread(svc.transcriber.transcribe, Path(f.name))
+            except Exception as e:
+                log.exception("transcription failed")
+                return {"text": "", "reply": "Couldn't make out the audio.", "actions": [], "error": str(e), "via": "voice"}
+        if not text.strip():
+            return {"text": "", "reply": "Didn't catch that.", "actions": [], "error": "heard nothing", "via": "voice"}
+        return {"text": text, **await svc.handle_prompt(text)}
 
     @app.post("/api/stop", dependencies=[api])
     async def stop():
