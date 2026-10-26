@@ -42,6 +42,7 @@ window.lampApp = () => ({
   connected: true,
   settingsOpen: false,
   toast: '',
+  playing: null, // name of the dynamic mood we started, while it runs
   recognizer: null,
   recorder: null,
   forceRecorder: false,
@@ -66,7 +67,10 @@ window.lampApp = () => ({
     es.onerror = () => (this.connected = false);
     es.addEventListener('snapshot', e => this.applySnapshot(JSON.parse(e.data)));
     es.addEventListener('state', e => this.applyBulbs(JSON.parse(e.data)));
-    es.addEventListener('activity', e => (this.activity = JSON.parse(e.data).kind));
+    es.addEventListener('activity', e => {
+      this.activity = JSON.parse(e.data).kind;
+      if (this.activity !== 'effect') this.playing = null;
+    });
     es.addEventListener('budget', e => (this.budget = JSON.parse(e.data)));
     es.addEventListener('song', e => (this.song = JSON.parse(e.data)));
     es.addEventListener('log', e => this.addLog(JSON.parse(e.data)));
@@ -131,6 +135,8 @@ window.lampApp = () => ({
     return `${b.kelvin ? b.kelvin + 'K' : 'color'} · ${b.brightness}%`;
   },
   kelvinCss: k => rgbCss(kelvinToRgb(k)),
+  presetsOf(kind) { return this.presets.filter(p => p.kind === kind); },
+  isPlaying(name) { return this.activity === 'effect' && this.playing === name; },
   anyOn() { return Object.values(this.bulbs).some(b => b.on); },
   activityLabel() { return { idle: 'still', effect: 'effect running', song: 'music sync' }[this.activity] ?? this.activity; },
   activityBadge() { return this.activity === 'idle' ? 'badge-ghost' : 'badge-secondary'; },
@@ -161,7 +167,11 @@ window.lampApp = () => ({
   setBrightness(target, v) { this.sendBrightness(target, v); },
   setColor(target, hex) { this.sendColor(target, hexToRgb(hex)); },
   setKelvin(target, k) { return this.post('/api/color', { target, kelvin: k }); },
-  applyPreset(name) { return this.post(`/api/preset/${encodeURIComponent(name)}`); },
+  async applyPreset(name) {
+    const p = this.presets.find(x => x.name === name);
+    await this.post(`/api/preset/${encodeURIComponent(name)}`);
+    this.playing = p?.kind === 'dynamic' ? name : null;
+  },
   stop() { return this.post('/api/stop'); },
   async rename(old, name) {
     name = name.trim().toLowerCase();

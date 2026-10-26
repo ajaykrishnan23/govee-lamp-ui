@@ -131,3 +131,10 @@ async def test_voice_empty_transcript(authed, transcriber):
     transcriber.text = "  "
     r = await client.post("/api/voice", files={"audio": ("clip.webm", b"\x00" * 10, "audio/webm")})
     assert r.status_code == 200 and r.json()["error"] == "heard nothing"
+
+
+async def test_presets_are_tagged_static_or_dynamic(authed):
+    client, _, _ = authed
+    kinds = {p["name"]: p["kind"] for p in (await client.get("/api/state")).json()["presets"]}
+    assert kinds["study"] == "static" and kinds["sunset"] == "static"
+    assert kinds["ocean"] == "dynamic" and kinds["campfire"] == "dynamic"

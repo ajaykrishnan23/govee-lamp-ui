@@ -41,7 +41,8 @@ class Services:
         return {
             "bulbs": {n: s.to_dict() for n, s in self.lamp.state().items()},
             "activity": self.activity.kind,
-            "presets": [{"name": p.name, "description": p.description, "builtin": p.builtin}
+            "presets": [{"name": p.name, "description": p.description, "builtin": p.builtin,
+                         "kind": "dynamic" if p.timeline else "static"}
                         for p in self.ctl.presets.list()],
             "budget": self.budget.status(),
             "song": self.ctl.song.status(),

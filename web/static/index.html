@@ -82,20 +82,35 @@
       </section>
 
       <div class="flex flex-col gap-4">
-        <!-- moods -->
+        <!-- moods: static looks and dynamic loops -->
         <section class="card bg-base-300/80 border border-line">
-          <div class="card-body gap-3">
-            <div class="flex items-center justify-between">
-              <h2 class="font-serif-ws text-xl">Moods</h2>
-              <button class="btn btn-xs btn-ghost" x-show="activity !== 'idle'" x-cloak @click="stop()">Stop effect</button>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <template x-for="p in presets" :key="p.name">
-                <div class="relative">
+          <div class="card-body gap-4">
+            <div>
+              <h2 class="font-serif-ws text-xl">Static</h2>
+              <p class="text-faint text-xs mb-3">A fixed look that stays put.</p>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="p in presetsOf('static')" :key="p.name">
                   <button class="btn btn-sm capitalize" :class="p.builtin ? 'btn-neutral' : 'btn-secondary btn-outline'"
                           :title="p.description" @click="applyPreset(p.name)" x-text="p.name"></button>
-                </div>
-              </template>
+                </template>
+              </div>
+            </div>
+            <div class="border-t border-line pt-4">
+              <div class="flex items-center justify-between">
+                <h2 class="font-serif-ws text-xl">Dynamic</h2>
+                <button class="btn btn-xs btn-outline" x-show="activity === 'effect'" x-cloak @click="stop()">Stop loop</button>
+              </div>
+              <p class="text-faint text-xs mb-3">Moves and loops until you pick something else.</p>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="p in presetsOf('dynamic')" :key="p.name">
+                  <button class="btn btn-sm capitalize gap-2"
+                          :class="isPlaying(p.name) ? 'btn-primary' : (p.builtin ? 'btn-neutral' : 'btn-secondary btn-outline')"
+                          :title="p.description" @click="applyPreset(p.name)">
+                    <span class="loading loading-ring loading-xs" x-show="isPlaying(p.name)" x-cloak></span>
+                    <span x-text="p.name"></span>
+                  </button>
+                </template>
+              </div>
             </div>
           </div>
         </section>

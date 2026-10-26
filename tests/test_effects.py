@@ -128,3 +128,19 @@ def test_loop_restarts_from_its_own_end_state_not_pre_effect_state():
     assert first_end.rgb == (0, 200, 170)
     assert just_after_wrap.kelvin is None
     assert just_after_wrap.rgb == (0, 200, 170)  # starts fading toward blue from teal, not from warm white
+
+
+async def test_runner_keeps_looping_past_first_pass(tmp_path):
+    # the runner must not clamp the playhead to the timeline length for looping effects
+    lamp, _ = await make_lamp(tmp_path)
+    clock = FakeClock()
+    mgr = ActivityManager(lamp, clock, tick_hz=1000)
+    tl = Timeline(cues=[Cue(t_ms=0, rgb=(255, 0, 0)), Cue(t_ms=500, rgb=(0, 0, 255))], duration_ms=1000, loop=True)
+    await mgr.play(tl, start_loop=False)
+    seen = []
+    for _ in range(12):  # 3 full passes, sampled every 250 ms
+        assert mgr.step() is True
+        seen.append(lamp.state()["top"].rgb)
+        clock.advance(250)
+    assert seen[4:8] == [(255, 0, 0), (255, 0, 0), (0, 0, 255), (0, 0, 255)]  # second pass repeats the first
+    assert mgr.kind == "effect"

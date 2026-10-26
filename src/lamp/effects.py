@@ -156,7 +156,9 @@ class ActivityManager:
             return False
         pos = self.position_ms()
         done = not tl.loop and pos >= tl.duration_ms
-        for name, s in state_at(tl, min(pos, tl.duration_ms), self._start).items():
+        # looping timelines wrap inside state_at; one-shot ones stop at their end
+        t = pos if tl.loop else min(pos, tl.duration_ms)
+        for name, s in state_at(tl, t, self._start).items():
             color = {"rgb": s.rgb} if s.rgb is not None else {"kelvin": s.kelvin}
             try:
                 self.lamp.apply(name, {"on": s.on, "brightness": s.brightness, **color})
