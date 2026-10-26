@@ -50,6 +50,27 @@ def _loop(duration_ms: int, cues: list[Cue]) -> Timeline:
     return Timeline(cues=cues, duration_ms=duration_ms, loop=True)
 
 
+def _scenes(every_ms: int, fade_ms: int, scenes: list[tuple]) -> list[Cue]:
+    """Top/bottom looks that melt into each other, one every `every_ms`."""
+    cues = []
+    for i, (top, top_b, bottom, bottom_b) in enumerate(scenes):
+        t = i * every_ms
+        cues.append(Cue(t_ms=t, on=True, target="top", rgb=top, brightness=top_b, fade_ms=fade_ms))
+        cues.append(Cue(t_ms=t, on=True, target="bottom", rgb=bottom, brightness=bottom_b, fade_ms=fade_ms))
+    return cues
+
+
+def _heartbeat(t_ms: int) -> list[Cue]:
+    """A soft red lub-dub on the bottom bulb, eased so it glows rather than flashes."""
+    red = (200, 0, 0)
+    return [
+        Cue(t_ms=t_ms, target="bottom", rgb=red, brightness=25, fade_ms=150),
+        Cue(t_ms=t_ms + 300, target="bottom", rgb=red, brightness=3, fade_ms=300),
+        Cue(t_ms=t_ms + 700, target="bottom", rgb=red, brightness=18, fade_ms=150),
+        Cue(t_ms=t_ms + 1000, target="bottom", rgb=(40, 0, 20), brightness=2, fade_ms=400),
+    ]
+
+
 BUILTINS: list[Preset] = [
     Preset(name="warm white", description="Plain warm white.",
            static={"all": {"on": True, "kelvin": 2700, "brightness": 80}}),
@@ -87,6 +108,31 @@ BUILTINS: list[Preset] = [
     ])),
     Preset(name="night light", description="Very dim red-amber.",
            static={"all": {"on": True, "rgb": (255, 60, 0), "brightness": 5}}),
+    Preset(name="trippy", description="Slow late-night DJ set: deep saturated colors melting into each other.",
+           timeline=_loop(48_000, _scenes(6000, 5000, [
+               ((90, 0, 255), 45, (0, 200, 180), 35),    # violet over teal
+               ((255, 0, 170), 60, (40, 0, 180), 30),    # magenta over indigo
+               ((40, 0, 180), 30, (255, 40, 120), 55),   # indigo over hot pink
+               ((0, 80, 255), 50, (0, 80, 255), 50),     # both bloom into electric blue
+               ((150, 255, 0), 40, (90, 0, 255), 45),    # acid green over violet
+               ((255, 120, 0), 50, (255, 0, 170), 40),   # amber over magenta
+               ((0, 200, 180), 35, (0, 80, 255), 55),    # teal over blue
+               ((90, 0, 255), 25, (40, 0, 180), 25),     # dip and breathe before it starts over
+           ]))),
+    Preset(name="dark side of the moon",
+           description="Mostly darkness, a heartbeat, then white light splits slowly into a spectrum.",
+           timeline=_loop(60_000, [
+               Cue(t_ms=0, on=True, target="top", rgb=(20, 0, 60), brightness=2, fade_ms=3000),
+               Cue(t_ms=0, on=True, target="bottom", rgb=(40, 0, 20), brightness=2, fade_ms=3000),
+               *_heartbeat(4000), *_heartbeat(6500),
+               Cue(t_ms=10_000, target="top", rgb=(255, 255, 255), brightness=20, fade_ms=4000),
+               *[Cue(t_ms=16_000 + i * 5000, target="bottom", rgb=rgb, brightness=40, fade_ms=4000)
+                 for i, rgb in enumerate([(255, 0, 0), (255, 100, 0), (255, 220, 0),
+                                          (0, 255, 40), (0, 60, 255), (120, 0, 255)])],
+               Cue(t_ms=44_000, target="top", rgb=(120, 0, 255), brightness=10, fade_ms=4000),
+               Cue(t_ms=48_000, target="top", rgb=(20, 0, 60), brightness=2, fade_ms=6000),
+               Cue(t_ms=48_000, target="bottom", rgb=(40, 0, 20), brightness=2, fade_ms=6000),
+           ])),
 ]
 for _p in BUILTINS:
     _p.builtin = True

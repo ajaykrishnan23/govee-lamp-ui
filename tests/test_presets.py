@@ -16,7 +16,24 @@ def flashes_per_sec(tl: Timeline, bulb: str) -> float:
 
 def test_builtin_names():
     assert {p.name for p in BUILTINS} >= {
-        "warm white", "reading", "study", "sunset", "campfire", "ocean", "cozy", "party", "night light"}
+        "warm white", "reading", "study", "sunset", "campfire", "ocean", "cozy", "party", "night light",
+        "trippy", "dark side of the moon"}
+
+
+@pytest.mark.parametrize("name", ["trippy", "dark side of the moon"])
+def test_slow_moods_loop_slowly_and_never_snap(name):
+    from lamp.presets import BUILTINS
+    p = next(p for p in BUILTINS if p.name == name)
+    tl = p.timeline
+    assert tl.loop and tl.duration_ms >= 40_000
+    # slow: apart from the heartbeat, no cue changes in under a second
+    assert sum(1 for c in tl.cues if 0 < c.fade_ms < 1000) <= 8
+    # seamless: the look at the end of a pass flows into the next pass without a jump
+    start = {"top": LightState(rgb=(0, 0, 0)), "bottom": LightState(rgb=(0, 0, 0))}
+    end, wrap = state_at(tl, tl.duration_ms - 1, start), state_at(tl, tl.duration_ms + 1, start)
+    for bulb in ("top", "bottom"):
+        assert max(abs(a - b) for a, b in zip(end[bulb].rgb, wrap[bulb].rgb)) < 10
+        assert abs(end[bulb].brightness - wrap[bulb].brightness) < 5
 
 
 @pytest.mark.parametrize("p", BUILTINS, ids=lambda p: p.name)

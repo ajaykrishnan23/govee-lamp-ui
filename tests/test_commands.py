@@ -2,7 +2,8 @@ import pytest
 
 from lamp.commands import Command, parse_command
 
-PRESETS = ["warm white", "reading", "study", "sunset", "campfire", "ocean", "cozy", "party", "night light"]
+PRESETS = ["warm white", "reading", "study", "sunset", "campfire", "ocean", "cozy", "party", "night light",
+           "trippy", "dark side of the moon"]
 
 
 @pytest.mark.parametrize("text,expected", [
@@ -28,6 +29,9 @@ PRESETS = ["warm white", "reading", "study", "sunset", "campfire", "ocean", "coz
     ("Make it the campfire mood.", Command("preset", "campfire")),
     ("switch to ocean", Command("preset", "ocean")),
     ("put on party mode", Command("preset", "party")),
+    ("trippy vibes", Command("preset", "trippy")),
+    ("Dark side of the moon", Command("preset", "dark side of the moon")),
+    ("give me dark side of the moon vibes", None),
     ("make it feel like studying in a library at night", None),
     ("warm cozy cuddly lights", None),
     ("turn it off in 20 minutes", None),
