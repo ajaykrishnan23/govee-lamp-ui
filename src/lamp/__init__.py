@@ -1,0 +1,1 @@
+"""Govee lamp control."""
