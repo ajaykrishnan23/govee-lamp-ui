@@ -1,5 +1,5 @@
 from lamp.commands import Command
-from tests.fakes import FakeSong, make_controller
+from tests.fakes import make_controller
 
 
 async def test_off_and_on(tmp_path):
@@ -33,12 +33,10 @@ async def test_timeline_preset_starts_effect(tmp_path):
     await ctl.activity.stop()
 
 
-async def test_manual_set_stops_song_and_effect(tmp_path):
-    song = FakeSong(on=True)
-    ctl, _, _ = await make_controller(tmp_path, song)
+async def test_manual_set_stops_effect(tmp_path):
+    ctl, _, _ = await make_controller(tmp_path)
     await ctl.run_command(Command("preset", "campfire"))
     await ctl.set("all", {"rgb": (1, 2, 3)})
-    assert song.on is False
     assert ctl.activity.kind == "idle"
     assert ctl.lamp.state()["top"].rgb == (1, 2, 3)
 
@@ -48,15 +46,6 @@ async def test_set_with_fade_plays_timeline(tmp_path):
     await ctl.set("all", {"brightness": 1, "on": False}, fade_ms=1000)
     assert ctl.activity.kind == "effect"
     await ctl.activity.stop()
-
-
-async def test_song_commands(tmp_path):
-    song = FakeSong()
-    ctl, _, _ = await make_controller(tmp_path, song)
-    await ctl.run_command(Command("song_on"))
-    assert song.on
-    await ctl.run_command(Command("song_off"))
-    assert not song.on
 
 
 async def test_unknown_preset_message(tmp_path):

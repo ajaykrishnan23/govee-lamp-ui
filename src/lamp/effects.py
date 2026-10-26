@@ -13,7 +13,7 @@ from .lamp import Lamp, LightState
 log = logging.getLogger(__name__)
 
 Channel = Field(ge=0, le=255)
-Kind = Literal["idle", "effect", "song"]
+Kind = Literal["idle", "effect"]
 
 
 class Cue(BaseModel):
@@ -162,7 +162,6 @@ class ActivityManager:
         self._timeline: Timeline | None = None
         self._start: dict[str, LightState] = {}
         self._t0 = 0.0
-        self._position_fn: Callable[[], float] | None = None
         self._task: asyncio.Task | None = None
         self._listeners: list[Callable[[str], None]] = []
 
@@ -183,15 +182,13 @@ class ActivityManager:
         self._t0 -= ms
 
     def position_ms(self) -> float:
-        return self._position_fn() if self._position_fn else self.clock.now_ms() - self._t0
+        return self.clock.now_ms() - self._t0
 
-    async def play(self, timeline: Timeline, kind: Kind = "effect",
-                   position_fn: Callable[[], float] | None = None, start_loop: bool = True) -> None:
+    async def play(self, timeline: Timeline, kind: Kind = "effect", start_loop: bool = True) -> None:
         await self.stop()
         self._timeline = timeline
         self._start = self.lamp.state()
         self._t0 = self.clock.now_ms()
-        self._position_fn = position_fn
         self._glides = {}
         self._last_step_ms = None
         self._set_kind(kind)

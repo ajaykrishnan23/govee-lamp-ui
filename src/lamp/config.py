@@ -14,8 +14,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
     openai_api_key: str = ""
-    spotify_client_id: str = ""
-    spotify_client_secret: str = ""
     app_password: str
 
     monthly_budget_usd: float = 10.0

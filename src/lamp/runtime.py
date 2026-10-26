@@ -10,7 +10,7 @@ from .ai.agent import PromptAgent
 from .ai.budget import Budget
 from .commands import parse_command
 from .config import Settings
-from .control import Controller, NoSong
+from .control import Controller
 from .effects import ActivityManager, MonotonicClock
 from .govee.transport import GoveeTransport
 from .lamp import Lamp
@@ -45,7 +45,6 @@ class Services:
                          "kind": "dynamic" if p.timeline else "static"}
                         for p in self.ctl.presets.list()],
             "budget": self.budget.status(),
-            "song": self.ctl.song.status(),
         }
 
     def publish_state(self) -> None:
@@ -76,7 +75,7 @@ def build_services(settings: Settings, transport=None, ai_client=None, discover_
     transport = transport or GoveeTransport(settings.max_updates_per_sec)
     lamp = Lamp(transport, d / "bulbs.json", discover_fn=discover_fn)
     activity = ActivityManager(lamp, MonotonicClock(), tick_hz=settings.max_updates_per_sec)
-    ctl = Controller(lamp, activity, PresetStore(d / "presets.json"), NoSong())
+    ctl = Controller(lamp, activity, PresetStore(d / "presets.json"))
     budget = Budget(d / "usage.jsonl", settings.monthly_budget_usd)
     client = ai_client or openai.AsyncOpenAI(api_key=settings.openai_api_key or "missing", timeout=60)
     agent = PromptAgent(client, settings.prompt_model, ctl, budget)

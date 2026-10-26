@@ -62,11 +62,11 @@ async def test_play_preempts_previous(tmp_path):
     kinds = []
     mgr.on_kind_change(kinds.append)
     await mgr.play(Timeline(cues=[Cue(t_ms=0, rgb=(1, 1, 1))], duration_ms=10_000), start_loop=False)
-    await mgr.play(Timeline(cues=[Cue(t_ms=0, rgb=(2, 2, 2))], duration_ms=10_000), kind="song", start_loop=False)
+    await mgr.play(Timeline(cues=[Cue(t_ms=0, rgb=(2, 2, 2))], duration_ms=10_000), start_loop=False)
     mgr.step()
-    assert mgr.kind == "song"
+    assert mgr.kind == "effect"
     assert lamp.state()["top"].rgb == (2, 2, 2)
-    assert kinds[-1] == "song"
+    assert kinds[-1] == "effect"
 
 
 async def test_stop_returns_idle_and_leaves_last_state(tmp_path):
@@ -89,17 +89,6 @@ async def test_runner_only_sends_diffs(tmp_path):
         clock.advance(100)
     keys = sorted((ip, k) for ip, k, _ in t.sent)
     assert keys == [("10.0.0.1", "brightness"), ("10.0.0.1", "color"), ("10.0.0.2", "brightness"), ("10.0.0.2", "color")]
-
-
-async def test_position_fn_drives_playhead(tmp_path):
-    lamp, _ = await make_lamp(tmp_path)
-    pos = {"ms": 0}
-    mgr = ActivityManager(lamp, FakeClock(), tick_hz=1000, smoothing=None)
-    tl = Timeline(cues=[Cue(t_ms=0, rgb=(1, 0, 0)), Cue(t_ms=5000, rgb=(0, 1, 0))], duration_ms=10_000)
-    await mgr.play(tl, kind="song", position_fn=lambda: pos["ms"], start_loop=False)
-    pos["ms"] = 6000
-    mgr.step()
-    assert lamp.state()["top"].rgb == (0, 1, 0)
 
 
 async def test_background_loop_ticks(tmp_path):

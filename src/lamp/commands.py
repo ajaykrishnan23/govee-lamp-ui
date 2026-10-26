@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-Kind = Literal["on", "off", "brightness", "brighter", "dimmer", "preset", "stop", "song_on", "song_off"]
+Kind = Literal["on", "off", "brightness", "brighter", "dimmer", "preset", "stop"]
 
 
 @dataclass(frozen=True)
@@ -20,8 +20,6 @@ _PATTERNS: list[tuple[str, Kind]] = [
     (r"(?:make it |a bit |little )*(?:brighter|more light|brighten(?: up)?)", "brighter"),
     (r"(?:make it |a bit |little )*(?:dim|dimmer|darker|dim it|dim down)", "dimmer"),
     (r"stop(?: it| that| the effect)?", "stop"),
-    (r"(?:sync|match)(?: the lights)? (?:to|with) (?:my |the )?music|song mode|music mode|music on", "song_on"),
-    (r"stop (?:the )?(?:music|song)(?: lights| mode| sync)?|song mode off|music off", "song_off"),
 ]
 
 

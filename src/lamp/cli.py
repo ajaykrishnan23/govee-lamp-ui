@@ -1,4 +1,4 @@
-"""Command line: `lamp serve|discover|certs|spotify-login|install-agent|uninstall-agent`."""
+"""Command line: `lamp serve|discover|certs|install-agent|uninstall-agent`."""
 import argparse
 import asyncio
 import logging
@@ -120,12 +120,6 @@ def cmd_uninstall_agent(_args) -> None:
     print("Removed the login agent.")
 
 
-def _todo(name):
-    def run(_args):
-        sys.exit(f"`lamp {name}` isn't built yet.")
-    return run
-
-
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     p = argparse.ArgumentParser(prog="lamp", description="Control the Govee lamp.")
@@ -134,7 +128,6 @@ def main() -> None:
         ("serve", cmd_serve, "run the web app"),
         ("discover", cmd_discover, "list bulbs on the LAN"),
         ("certs", cmd_certs, "make HTTPS certificates with mkcert"),
-        ("spotify-login", _todo("spotify-login"), "connect Spotify (one time)"),
         ("install-agent", cmd_install_agent, "start the app at login"),
         ("uninstall-agent", cmd_uninstall_agent, "stop starting at login"),
     ]:

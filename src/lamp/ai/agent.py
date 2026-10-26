@@ -50,10 +50,7 @@ TOOLS = [
          "timeline": _TIMELINE}, ["name"]),
     _fn("load_preset", "Apply a saved or built-in mood by name.", {"name": {"type": "string"}}, ["name"]),
     _fn("list_presets", "List moods with descriptions.", {}),
-    _fn("stop", "Stop any running effect or music sync, leaving the current look.", {}),
-    _fn("start_song_mode", "Start syncing the lamp to whatever is playing on Spotify.", {}),
-    _fn("stop_song_mode", "Stop syncing to music.", {}),
-    _fn("redo_song_show", "Rewrite the light show for the current song.", {"instruction": {"type": "string"}}, ["instruction"]),
+    _fn("stop", "Stop any running effect, leaving the current look.", {}),
 ]
 
 SYSTEM = """You control Ajay's lamp: a tall paper floor lamp with two Govee color bulbs inside, \
@@ -69,7 +66,7 @@ If a look lands well or Ajay asks, save it with save_preset. Act first, then rep
 friendly sentence saying what you did.
 
 Current state: {state}
-Activity: {activity}. Music sync: {song}.
+Activity: {activity}.
 Moods: {presets}"""
 
 
@@ -92,7 +89,7 @@ class PromptAgent:
         return SYSTEM.format(
             names=" and ".join(c.lamp.names()) or "no bulbs found",
             state=json.dumps({n: s.to_dict() for n, s in c.lamp.state().items()}),
-            activity=c.activity.kind, song=c.song.status(),
+            activity=c.activity.kind,
             presets=", ".join(c.presets.names()),
         )
 
@@ -173,12 +170,4 @@ class PromptAgent:
             case "stop":
                 await c.stop()
                 return "stopped"
-            case "start_song_mode":
-                return await c.start_song()
-            case "stop_song_mode":
-                await c.song.stop()
-                return "stopped"
-            case "redo_song_show":
-                await c.song.redo(a["instruction"])
-                return "rewriting"
         return f"error: unknown tool {name}"

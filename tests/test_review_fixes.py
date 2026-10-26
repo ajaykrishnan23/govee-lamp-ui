@@ -7,7 +7,7 @@ import pytest
 
 from lamp.commands import Command
 from lamp.config import Settings
-from lamp.control import Controller, NoSong
+from lamp.control import Controller
 from lamp.effects import ActivityManager, MonotonicClock
 from lamp.govee.protocol import BulbStatus
 from lamp.govee.transport import GoveeTransport
@@ -98,18 +98,6 @@ def test_preset_rejects_bad_static(patch):
         Preset(name="bad", static={"all": patch})
 
 
-# Important 7: song commands with no song mode reply instead of 500, and don't kill the effect
-async def test_song_on_without_song_mode(tmp_path):
-    lamp, _ = await make_lamp(tmp_path)
-    activity = ActivityManager(lamp, MonotonicClock(), tick_hz=50)
-    ctl = Controller(lamp, activity, PresetStore(tmp_path / "p.json"), NoSong())
-    await ctl.run_command(Command("preset", "campfire"))
-    reply = await ctl.run_command(Command("song_on"))
-    assert "isn't set up" in reply
-    assert activity.kind == "effect"
-    await activity.stop()
-
-
 # Important 8: login works over plain HTTP too
 async def test_login_over_http(settings, ai, transcriber):
     from lamp.runtime import build_app
@@ -126,7 +114,7 @@ async def test_rapid_preset_taps_last_wins(tmp_path):
     lamp, _ = await make_lamp(tmp_path)
     store = PresetStore(tmp_path / "p.json")
     activity = ActivityManager(lamp, MonotonicClock(), tick_hz=50)
-    ctl = Controller(lamp, activity, store, NoSong())
+    ctl = Controller(lamp, activity, store)
     await ctl.apply_preset(store.get("campfire"))
     await asyncio.gather(ctl.apply_preset(store.get("ocean")), ctl.apply_preset(store.get("party")))
     assert activity._timeline == store.get("party").timeline
@@ -137,7 +125,7 @@ async def test_static_set_not_overridden_by_concurrent_effect(tmp_path):
     lamp, _ = await make_lamp(tmp_path)
     store = PresetStore(tmp_path / "p.json")
     activity = ActivityManager(lamp, MonotonicClock(), tick_hz=50)
-    ctl = Controller(lamp, activity, store, NoSong())
+    ctl = Controller(lamp, activity, store)
     await ctl.apply_preset(store.get("campfire"))
     await asyncio.gather(ctl.run_timeline(store.get("ocean").timeline), ctl.set("all", {"on": False}))
     assert activity.kind == "idle" and not lamp.state()["top"].on

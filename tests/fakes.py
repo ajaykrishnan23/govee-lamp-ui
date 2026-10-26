@@ -44,32 +44,12 @@ class FakeClock:
         self.t += ms
 
 
-class FakeSong:
-    def __init__(self, on=False):
-        self.on = on
-        self.calls: list[str] = []
-
-    async def start(self):
-        self.calls.append("start")
-        self.on = True
-
-    async def stop(self):
-        self.calls.append("stop")
-        self.on = False
-
-    async def redo(self, instruction: str):
-        self.calls.append(f"redo:{instruction}")
-
-    def status(self) -> dict:
-        return {"on": self.on, "state": "idle"}
-
-
-async def make_controller(tmp_path, song=None):
+async def make_controller(tmp_path):
     from lamp.control import Controller
     from lamp.effects import ActivityManager
     from lamp.presets import PresetStore
     lamp, t = await make_lamp(tmp_path)
     clock = FakeClock()
     activity = ActivityManager(lamp, clock, tick_hz=1000)
-    ctl = Controller(lamp, activity, PresetStore(tmp_path / "presets.json"), song or FakeSong())
+    ctl = Controller(lamp, activity, PresetStore(tmp_path / "presets.json"))
     return ctl, t, clock

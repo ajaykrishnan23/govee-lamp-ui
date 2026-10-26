@@ -115,14 +115,6 @@
           </div>
         </section>
 
-        <!-- song (placeholder until song mode) -->
-        <section class="card bg-base-300/80 border border-line" x-show="song && song.state !== 'unavailable'" x-cloak>
-          <div class="card-body gap-2">
-            <h2 class="font-serif-ws text-xl">Now playing</h2>
-            <p class="text-dim text-sm" x-text="song?.track ? song.track.title : 'Nothing playing'"></p>
-          </div>
-        </section>
-
         <!-- log -->
         <section class="card bg-base-300/80 border border-line">
           <div class="card-body gap-3">

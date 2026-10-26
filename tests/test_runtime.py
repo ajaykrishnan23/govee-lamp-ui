@@ -19,7 +19,7 @@ def test_keepawake_starts_and_stops_with_activity():
     procs = []
     ka = KeepAwake(popen=lambda args: procs.append(FakeProc(args)) or procs[-1], pid=1234)
     ka.on_kind("effect")
-    ka.on_kind("song")  # already held: no second process
+    ka.on_kind("effect")  # already held: no second process
     assert len(procs) == 1 and procs[0].args == ["caffeinate", "-i", "-w", "1234"]
     ka.on_kind("idle")
     assert procs[0].terminated

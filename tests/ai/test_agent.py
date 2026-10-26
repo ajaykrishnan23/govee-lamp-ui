@@ -7,7 +7,7 @@ import pytest
 
 from lamp.ai.agent import PromptAgent
 from lamp.ai.budget import Budget
-from tests.fakes import FakeSong, make_controller
+from tests.fakes import make_controller
 
 
 def usage(i=100, o=20):
@@ -36,8 +36,8 @@ class FakeClient:
         return self.responses_q.pop(0)
 
 
-async def make_agent(tmp_path, client, cap=10.0, song=None):
-    ctl, t, _ = await make_controller(tmp_path, song)
+async def make_agent(tmp_path, client, cap=10.0):
+    ctl, t, _ = await make_controller(tmp_path)
     budget = Budget(tmp_path / "usage.jsonl", cap)
     return PromptAgent(client, "gpt-6-luna", ctl, budget), ctl, t, budget
 
@@ -92,14 +92,6 @@ async def test_run_effect_tool(tmp_path):
     await agent.handle("breathe")
     assert ctl.activity.kind == "effect"
     await ctl.activity.stop()
-
-
-async def test_light_tool_stops_song_mode(tmp_path):
-    song = FakeSong(on=True)
-    client = FakeClient(resp(call("set_lights", target="all", kelvin=3000)), resp(text="ok"))
-    agent, *_ = await make_agent(tmp_path, client, song=song)
-    await agent.handle("warm white please")
-    assert song.on is False
 
 
 async def test_budget_blocked_skips_api(tmp_path):

@@ -30,7 +30,6 @@ window.lampApp = () => ({
   activity: 'idle',
   presets: [],
   budget: null,
-  song: null,
   log: [],
   target: 'all',
   sliderValue: 80,
@@ -72,7 +71,6 @@ window.lampApp = () => ({
       if (this.activity !== 'effect') this.playing = null;
     });
     es.addEventListener('budget', e => (this.budget = JSON.parse(e.data)));
-    es.addEventListener('song', e => (this.song = JSON.parse(e.data)));
     es.addEventListener('log', e => this.addLog(JSON.parse(e.data)));
   },
 
@@ -81,7 +79,6 @@ window.lampApp = () => ({
     this.activity = s.activity;
     this.presets = s.presets;
     this.budget = s.budget;
-    this.song = s.song;
   },
 
   applyBulbs(bulbs) {
@@ -138,7 +135,7 @@ window.lampApp = () => ({
   presetsOf(kind) { return this.presets.filter(p => p.kind === kind); },
   isPlaying(name) { return this.activity === 'effect' && this.playing === name; },
   anyOn() { return Object.values(this.bulbs).some(b => b.on); },
-  activityLabel() { return { idle: 'still', effect: 'effect running', song: 'music sync' }[this.activity] ?? this.activity; },
+  activityLabel() { return { idle: 'still', effect: 'effect running' }[this.activity] ?? this.activity; },
   activityBadge() { return this.activity === 'idle' ? 'badge-ghost' : 'badge-secondary'; },
   money: v => (v == null ? "" : v > 0 && v < 0.01 ? "<$0.01" : `$${v.toFixed(2)}`),
 

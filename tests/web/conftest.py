@@ -6,13 +6,13 @@ from lamp.runtime import build_app
 from tests.ai.test_agent import FakeClient, resp
 from tests.fakes import A, B, FakeTransport, fake_discover
 
-SECRET_VALUES = ["sk-test-openai", "spotify-secret-xyz", "pw-123"]
+SECRET_VALUES = ["sk-test-openai", "pw-123"]
 
 
 @pytest.fixture
 def settings(tmp_path):
-    return Settings(app_password="pw-123", openai_api_key="sk-test-openai", spotify_client_secret="spotify-secret-xyz",
-                    spotify_client_id="cid", data_dir=tmp_path / "data", max_updates_per_sec=1000)
+    return Settings(app_password="pw-123", openai_api_key="sk-test-openai",
+                    data_dir=tmp_path / "data", max_updates_per_sec=1000)
 
 
 @pytest.fixture

@@ -59,5 +59,3 @@ uv run pytest -q                   # includes the Whisper test
 (cd web && npm run watch)          # rebuild CSS while editing
 SHOT_PASSWORD=… node tools/shot.mjs / 390x844   # screenshot the running app into tmp/
 ```
-
-The design and plan are in `docs/superpowers/`. Song mode (Spotify-synced light shows) is planned but not built yet.

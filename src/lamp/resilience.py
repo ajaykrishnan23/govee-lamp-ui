@@ -16,7 +16,7 @@ AGENT_LABEL = "com.ajay.lamp"
 
 
 class KeepAwake:
-    """Holds a `caffeinate -i` assertion while any effect or music sync is running."""
+    """Holds a `caffeinate -i` assertion while an effect is running."""
 
     def __init__(self, popen: Callable = subprocess.Popen, pid: int | None = None):
         self._popen = popen

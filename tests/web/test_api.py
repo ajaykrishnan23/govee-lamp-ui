@@ -1,6 +1,5 @@
 import json
 
-from tests.fakes import FakeSong
 from tests.web.conftest import SECRET_VALUES
 
 
@@ -26,7 +25,7 @@ async def test_login_sets_cookie(app_env):
 async def test_state_shape(authed):
     client, _, _ = authed
     s = (await client.get("/api/state")).json()
-    assert set(s) >= {"bulbs", "activity", "presets", "budget", "song"}
+    assert set(s) >= {"bulbs", "activity", "presets", "budget"}
     assert set(s["bulbs"]) == {"top", "bottom"}
 
 
@@ -74,14 +73,6 @@ async def test_preset_routes(authed):
     assert svc.lamp.state()["top"].rgb == (200, 40, 120)
     assert (await client.post("/api/preset/nope")).status_code == 404
     assert (await client.delete("/api/preset/sunset")).status_code == 400
-
-
-async def test_quick_control_stops_song_mode(authed):
-    client, svc, _ = authed
-    song = FakeSong(on=True)
-    svc.ctl.song = song
-    await client.post("/api/power", json={"target": "all", "on": True})
-    assert song.on is False
 
 
 async def test_bulb_rename_and_swap(authed):
