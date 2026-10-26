@@ -46,6 +46,7 @@ See [docs/hardware-notes.md](docs/hardware-notes.md).
 ## Troubleshooting
 
 - **No bulbs found:** check that LAN Control is on in the Govee app and the Mac is on the same Wi‑Fi. The first scan after starting sometimes gets no answer (macOS may ask for Local Network permission). Use "Find bulbs again" in settings or run `lamp discover` again.
+- **The page loads on the Mac but not on the phone:** the macOS firewall is blocking incoming connections. The first time `lamp serve` runs, click **Allow** when macOS asks about Python accepting incoming connections. If you missed that prompt, go to System Settings → Network → Firewall → Options and allow the `python3` inside `.venv`. Test in this order: `https://localhost:8443` on the Mac, then `https://<mac-ip>:8443` on the phone (`lamp serve` prints the IP), then `https://<name>.local:8443`. Some routers also block devices on the same Wi‑Fi from reaching each other ("client isolation" / guest networks).
 - **The browser warns about the certificate:** run `uv run lamp certs` (it runs `mkcert -install`). On the phone, finish the trust steps above.
 - **The mic does nothing on the phone:** the page must be on `https://`, and Chrome needs microphone permission for the site.
 - **AI replies "budget reached":** raise `MONTHLY_BUDGET_USD` in `.env`, or wait for next month.
