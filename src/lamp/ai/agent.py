@@ -110,8 +110,7 @@ class PromptAgent:
             except openai.OpenAIError as e:
                 log.warning("AI call failed: %s", e)
                 return AgentResult(f"Couldn't reach the AI ({type(e).__name__}).", actions, error=str(e) or type(e).__name__)
-            u = r.usage
-            self.budget.record(self.model, u.input_tokens, u.input_tokens_details.cached_tokens, u.output_tokens)
+            self._record_usage(getattr(r, "usage", None))
             calls = [it for it in r.output if it.type == "function_call"]
             if not calls:
                 return AgentResult(r.output_text.strip() or "Done.", actions)
@@ -123,12 +122,24 @@ class PromptAgent:
                 items.append({"type": "function_call_output", "call_id": c.call_id, "output": out})
         return AgentResult("Done." if actions else "I got stuck — try rephrasing?", actions)
 
+    def _record_usage(self, u) -> None:
+        if u is None:
+            return
+        details = getattr(u, "input_tokens_details", None)
+        cached = getattr(details, "cached_tokens", 0) or 0
+        self.budget.record(self.model, u.input_tokens or 0, cached, u.output_tokens or 0)
+
     async def _run_tool(self, name: str, arguments: str) -> str:
         try:
             args = json.loads(arguments or "{}")
+            if not isinstance(args, dict):
+                return "error: arguments must be a JSON object"
             return await self._dispatch(name, args)
         except (ValidationError, ValueError, KeyError, TypeError, RuntimeError) as e:
             return f"error: {e}"
+        except Exception as e:  # never let one tool take down the request
+            log.exception("tool %s failed", name)
+            return f"error: {type(e).__name__}: {e}"
 
     async def _dispatch(self, name: str, a: dict) -> str:
         c = self.ctl
@@ -163,9 +174,7 @@ class PromptAgent:
                 await c.stop()
                 return "stopped"
             case "start_song_mode":
-                await c.activity.stop()
-                await c.song.start()
-                return "started"
+                return await c.start_song()
             case "stop_song_mode":
                 await c.song.stop()
                 return "stopped"

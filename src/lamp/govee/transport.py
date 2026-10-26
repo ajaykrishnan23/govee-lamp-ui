@@ -52,6 +52,7 @@ class GoveeTransport:
         self._last_flush: dict[str, float] = {}
         self._status_waiters: dict[str, list[asyncio.Future]] = {}
         self._scan_results: dict[str, BulbInfo] | None = None
+        self._discover_lock = asyncio.Lock()
 
     async def start(self) -> None:
         loop = asyncio.get_running_loop()
@@ -115,6 +116,10 @@ class GoveeTransport:
                 waiters.remove(fut)
 
     async def discover(self, timeout: float = 3.0) -> list[BulbInfo]:
+        async with self._discover_lock:  # overlapping scans would share one results dict
+            return await self._discover(timeout)
+
+    async def _discover(self, timeout: float) -> list[BulbInfo]:
         self._scan_results = {}
         if self._send_tr:
             for _ in range(2):

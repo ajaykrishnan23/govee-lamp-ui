@@ -4,9 +4,24 @@ import json
 import re
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .effects import Cue, Timeline
+
+
+class StaticPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    on: bool | None = None
+    rgb: tuple[int, int, int] | None = None
+    kelvin: int | None = Field(default=None, ge=2000, le=9000)
+    brightness: int | None = Field(default=None, ge=1, le=100)
+
+    @field_validator("rgb")
+    @classmethod
+    def _rgb(cls, v):
+        if v is not None and not all(0 <= c <= 255 for c in v):
+            raise ValueError("rgb channels must be 0-255")
+        return v
 
 
 class Preset(BaseModel):
@@ -19,6 +34,12 @@ class Preset(BaseModel):
     def model_post_init(self, _):
         if (self.static is None) == (self.timeline is None):
             raise ValueError("a preset needs exactly one of static or timeline")
+        if self.static is not None:
+            try:
+                self.static = {k: StaticPatch.model_validate(v).model_dump(exclude_none=True, mode="json")
+                               for k, v in self.static.items()}
+            except ValidationError as e:
+                raise ValueError(f"invalid static look: {e}") from e
 
 
 def _key(name: str) -> str:

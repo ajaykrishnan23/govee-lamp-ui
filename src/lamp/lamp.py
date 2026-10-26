@@ -63,13 +63,18 @@ class Lamp:
                 self._names[name] = b.mac
             self._ips[b.mac] = b.ip
         self._save()
+        # re-read every bulb: one may have been power-cycled since we last looked
+        found_macs = {b.mac for b in found}
         for name, mac in self._names.items():
-            if name not in self._state and mac in self._ips:
+            if mac in found_macs:
                 st = await self._t.query_status(self._ips[mac])
-                self._state[name] = LightState(
-                    on=st.on, brightness=st.brightness,
-                    rgb=None if st.kelvin else st.rgb, kelvin=st.kelvin or None,
-                ) if st else LightState()
+                if st:
+                    self._state[name] = LightState(
+                        on=st.on, brightness=st.brightness,
+                        rgb=None if st.kelvin else st.rgb, kelvin=st.kelvin or None,
+                    )
+                else:
+                    self._state.setdefault(name, LightState())
         self._emit()
 
     def names(self) -> list[str]:
@@ -101,16 +106,18 @@ class Lamp:
             raise ValueError(f"unknown bulb {target!r}; known: {self.names()}")
         return [target]
 
-    def apply(self, target: str, patch: dict) -> None:
+    def apply(self, target: str, patch: dict, force: bool = False) -> None:
+        """Change bulbs. Only changed fields are sent, unless `force` (a user's explicit
+        command) resends every field in the patch in case the cache is stale."""
         for name in self.targets(target):
             old = self._state.get(name, LightState())
             new = old.merged(patch)
             ip = self._ips[self._names[name]]
-            if new.on != old.on:
+            if new.on != old.on or (force and "on" in patch):
                 self._t.send_latest(ip, "power", turn_msg(new.on))
-            if new.brightness != old.brightness:
+            if new.brightness != old.brightness or (force and "brightness" in patch):
                 self._t.send_latest(ip, "brightness", brightness_msg(new.brightness))
-            if (new.rgb, new.kelvin) != (old.rgb, old.kelvin):
+            if (new.rgb, new.kelvin) != (old.rgb, old.kelvin) or (force and ("rgb" in patch or "kelvin" in patch)):
                 if new.rgb is not None:
                     self._t.send_latest(ip, "color", color_msg(*new.rgb))
                 elif new.kelvin is not None:

@@ -2,6 +2,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,6 +27,13 @@ class Settings(BaseSettings):
 
     max_updates_per_sec: float = 10.0
     sync_offset_ms: int = 0
+
+    @field_validator("app_password")
+    @classmethod
+    def _password_set(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("APP_PASSWORD must not be empty")
+        return v
 
 
 @lru_cache

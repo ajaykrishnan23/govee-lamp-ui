@@ -71,11 +71,11 @@ def create_app(svc: "Services", lifespan=None) -> FastAPI:
         return wrapper
 
     @app.post("/login")
-    async def login(body: Login, response: Response):
+    async def login(body: Login, request: Request, response: Response):
         if not svc.signer.check_password(body.password):
             raise HTTPException(401, "wrong password")
         response.set_cookie(COOKIE, svc.signer.issue(), max_age=MAX_AGE_S, httponly=True,
-                            secure=True, samesite="strict")
+                            secure=request.url.scheme == "https", samesite="strict")
         return {"ok": True}
 
     @app.get("/login")
@@ -118,7 +118,8 @@ def create_app(svc: "Services", lifespan=None) -> FastAPI:
         await svc.ctl.set(body.target, {"on": True, **patch})
         return {"ok": True}
 
-    @app.post("/api/preset/{name}", dependencies=[api])
+    @app.post("/api/preset/{name:path}", dependencies=[api])
+    @bad_request
     async def preset(name: str):
         p = svc.ctl.presets.get(name)
         if not p:
@@ -126,7 +127,7 @@ def create_app(svc: "Services", lifespan=None) -> FastAPI:
         await svc.ctl.apply_preset(p)
         return {"ok": True}
 
-    @app.delete("/api/preset/{name}", dependencies=[api])
+    @app.delete("/api/preset/{name:path}", dependencies=[api])
     @bad_request
     async def delete_preset(name: str):
         svc.ctl.presets.delete(name)

@@ -56,8 +56,13 @@ class Services:
             reply = await self.ctl.run_command(cmd)
             out = {"reply": reply, "actions": [cmd.kind], "error": None, "via": "instant"}
         else:
-            r = await self.agent.handle(text)
-            out = {"reply": r.reply, "actions": r.actions, "error": r.error, "via": "ai"}
+            try:
+                r = await self.agent.handle(text)
+                out = {"reply": r.reply, "actions": r.actions, "error": r.error, "via": "ai"}
+            except Exception as e:
+                log.exception("prompt failed")
+                out = {"reply": "Something went wrong handling that.", "actions": [],
+                       "error": f"{type(e).__name__}: {e}", "via": "ai"}
             self.bus.publish("budget", self.budget.status())
             self.publish_state()  # presets may have changed
         self.bus.publish("log", {"text": text, **out})

@@ -1,4 +1,5 @@
 """One place that turns user intents into lamp changes (used by the API and the AI)."""
+import asyncio
 from typing import Protocol
 
 from .commands import Command
@@ -38,6 +39,8 @@ class Controller:
         self.activity = activity
         self.presets = presets
         self.song = song
+        # one change at a time, in arrival order, so rapid taps resolve "last tap wins"
+        self._lock = asyncio.Lock()
 
     async def _take_over(self) -> None:
         if self.song.status().get("on"):
@@ -46,28 +49,40 @@ class Controller:
 
     async def set(self, target: str, patch: dict, fade_ms: int = 0) -> None:
         self.lamp.targets(target)  # validate before stopping anything
-        await self._take_over()
-        if fade_ms > 0:
-            await self.activity.play(Timeline(cues=[Cue(t_ms=0, target=target, fade_ms=fade_ms, **patch)],
-                                              duration_ms=fade_ms))
-        else:
-            self.lamp.apply(target, patch)
+        async with self._lock:
+            await self._take_over()
+            if fade_ms > 0:
+                await self.activity.play(Timeline(cues=[Cue(t_ms=0, target=target, fade_ms=fade_ms, **patch)],
+                                                  duration_ms=fade_ms))
+            else:
+                self.lamp.apply(target, patch, force=True)
 
     async def run_timeline(self, timeline: Timeline) -> None:
-        await self._take_over()
-        await self.activity.play(timeline)
+        async with self._lock:
+            await self._take_over()
+            await self.activity.play(timeline)
 
     async def apply_preset(self, p: Preset) -> None:
         if p.timeline:
             await self.run_timeline(p.timeline)
             return
-        await self._take_over()
-        for target, patch in p.static.items():
-            if target == "all" or target in self.lamp.names():
-                self.lamp.apply(target, patch)
+        async with self._lock:
+            await self._take_over()
+            for target, patch in p.static.items():
+                if target == "all" or target in self.lamp.names():
+                    self.lamp.apply(target, patch, force=True)
 
     async def stop(self) -> None:
-        await self._take_over()
+        async with self._lock:
+            await self._take_over()
+
+    async def start_song(self) -> str:
+        if self.song.status().get("state") == "unavailable":
+            return "Music sync isn't set up yet."
+        async with self._lock:
+            await self.activity.stop()
+            await self.song.start()
+        return "Syncing to your music."
 
     async def run_command(self, cmd: Command) -> str:
         match cmd.kind:
@@ -92,9 +107,7 @@ class Controller:
                 await self.stop()
                 return "Stopped."
             case "song_on":
-                await self.activity.stop()
-                await self.song.start()
-                return "Syncing to your music."
+                return await self.start_song()
             case "song_off":
                 await self.song.stop()
                 return "Music sync off."
