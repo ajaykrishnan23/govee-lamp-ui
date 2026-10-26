@@ -3,6 +3,7 @@ import asyncio
 import logging
 import math
 import time
+from dataclasses import dataclass
 from typing import Callable, Literal, Protocol
 
 from pydantic import BaseModel, Field
@@ -86,6 +87,60 @@ def state_at(timeline: Timeline, t_ms: float, start: dict[str, LightState]) -> d
     return out
 
 
+@dataclass
+class _Glide:
+    """A bulb's smoothed output, kept in floats so tiny per-tick steps aren't rounded away."""
+    on: bool
+    rgb: list[float]
+    brightness: float
+    kelvin: float | None = None  # set only while gliding between two whites
+
+
+def _toward(cur: float, target: float, max_step: float) -> float:
+    return target if abs(target - cur) <= max_step else cur + max_step * (1 if target > cur else -1)
+
+
+@dataclass
+class Smoothing:
+    """Anti-flicker guard for every animation: caps how fast brightness and color may change,
+    so sudden jumps and strobes become gentle glides no matter how a timeline is written."""
+    brightness_per_s: float = 20.0
+    color_per_s: float = 60.0
+    kelvin_per_s: float = 1000.0
+
+    def start(self, s: LightState) -> _Glide:
+        rgb = list(s.rgb) if s.rgb is not None else list(kelvin_to_rgb(s.kelvin or 2700))
+        return _Glide(on=s.on, rgb=rgb, brightness=float(s.brightness) if s.on else 1.0, kelvin=s.kelvin)
+
+    def step(self, g: _Glide, target: LightState, dt: float) -> _Glide:
+        want_b = float(target.brightness) if target.on else 1.0
+        if target.on and not g.on:
+            g = _Glide(on=True, rgb=g.rgb, brightness=1.0, kelvin=g.kelvin)  # fade in from dark
+        b = _toward(g.brightness, want_b, self.brightness_per_s * dt)
+        if target.kelvin is not None and g.kelvin is not None:
+            k = _toward(g.kelvin, target.kelvin, self.kelvin_per_s * dt)
+            rgb = list(kelvin_to_rgb(round(k)))
+        else:
+            k = None
+            want = target.rgb if target.rgb is not None else kelvin_to_rgb(target.kelvin or 2700)
+            rgb = [_toward(c, w, self.color_per_s * dt) for c, w in zip(g.rgb, want)]
+        on = target.on or b > 1.0  # glide down before switching off
+        return _Glide(on=on, rgb=rgb, brightness=b, kelvin=k)
+
+    @staticmethod
+    def output(g: _Glide, target: LightState) -> LightState:
+        if g.kelvin is not None:
+            return LightState(on=g.on, kelvin=round(g.kelvin), brightness=round(g.brightness))
+        rgb = tuple(round(c) for c in g.rgb)
+        if target.kelvin is not None and target.rgb is None and rgb == kelvin_to_rgb(target.kelvin):
+            return LightState(on=g.on, kelvin=target.kelvin, brightness=round(g.brightness))
+        return LightState(on=g.on, rgb=rgb, brightness=round(g.brightness))
+
+    @staticmethod
+    def arrived(out: LightState, target: LightState) -> bool:
+        return out == target or (not target.on and not out.on)
+
+
 class Clock(Protocol):
     def now_ms(self) -> float: ...
 
@@ -96,10 +151,13 @@ class MonotonicClock:
 
 
 class ActivityManager:
-    def __init__(self, lamp: Lamp, clock: Clock, tick_hz: float):
+    def __init__(self, lamp: Lamp, clock: Clock, tick_hz: float, smoothing: Smoothing | None = Smoothing()):
         self.lamp = lamp
         self.clock = clock
         self.tick = 1.0 / tick_hz
+        self.smoothing = smoothing
+        self._glides: dict[str, _Glide] = {}
+        self._last_step_ms: float | None = None
         self.kind: Kind = "idle"
         self._timeline: Timeline | None = None
         self._start: dict[str, LightState] = {}
@@ -134,6 +192,8 @@ class ActivityManager:
         self._start = self.lamp.state()
         self._t0 = self.clock.now_ms()
         self._position_fn = position_fn
+        self._glides = {}
+        self._last_step_ms = None
         self._set_kind(kind)
         if start_loop:
             self._task = asyncio.get_running_loop().create_task(self._run())
@@ -155,15 +215,26 @@ class ActivityManager:
         if tl is None:
             return False
         pos = self.position_ms()
-        done = not tl.loop and pos >= tl.duration_ms
+        now = self.clock.now_ms()
+        dt = 0.0 if self._last_step_ms is None else max(0.0, min(1.0, (now - self._last_step_ms) / 1000))
+        self._last_step_ms = now
         # looping timelines wrap inside state_at; one-shot ones stop at their end
         t = pos if tl.loop else min(pos, tl.duration_ms)
+        caught_up = True
         for name, s in state_at(tl, t, self._start).items():
-            color = {"rgb": s.rgb} if s.rgb is not None else {"kelvin": s.kelvin}
+            if self.smoothing:
+                g = self._glides.get(name) or self.smoothing.start(self.lamp.state().get(name, s))
+                g = self._glides[name] = self.smoothing.step(g, s, dt)
+                out = self.smoothing.output(g, s)
+                caught_up &= self.smoothing.arrived(out, s)
+            else:
+                out = s
+            color = {"rgb": out.rgb} if out.rgb is not None else {"kelvin": out.kelvin}
             try:
-                self.lamp.apply(name, {"on": s.on, "brightness": s.brightness, **color})
+                self.lamp.apply(name, {"on": out.on, "brightness": out.brightness, **color})
             except ValueError:
                 pass  # bulb vanished mid-effect
+        done = not tl.loop and pos >= tl.duration_ms and caught_up
         if done:
             self._timeline = None
             self._set_kind("idle")

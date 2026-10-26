@@ -80,3 +80,26 @@ def test_delete(tmp_path):
 def test_preset_requires_exactly_one_kind():
     with pytest.raises(ValueError):
         Preset(name="x")
+
+
+def test_campfire_stays_orange_and_glows_slowly():
+    from lamp.presets import BUILTINS
+    tl = next(p for p in BUILTINS if p.name == "campfire").timeline
+    for c in tl.cues:
+        r, g, b = c.rgb
+        assert r >= 230 and 40 <= g <= 130 and b <= 30, c.rgb  # orange/amber only: no pink, no white
+        assert c.fade_ms >= 1500                                # glow, don't flicker
+        assert 35 <= c.brightness <= 60
+    start = {"top": LightState(rgb=(255, 90, 10), brightness=50), "bottom": LightState(rgb=(255, 90, 10), brightness=50)}
+    for t in range(0, tl.duration_ms * 2, 100):  # brightness never moves more than 3% per 100 ms
+        a, b = state_at(tl, t, start), state_at(tl, t + 100, start)
+        assert all(abs(a[n].brightness - b[n].brightness) <= 3 for n in a), t
+
+
+def test_cozy_is_a_static_two_tone_gradient():
+    from lamp.presets import BUILTINS
+    p = next(p for p in BUILTINS if p.name == "cozy")
+    assert p.timeline is None
+    assert p.static["top"]["rgb"] != p.static["bottom"]["rgb"]
+    assert p.static["bottom"]["brightness"] > p.static["top"]["brightness"]  # warm pool below, softer above
+

@@ -61,13 +61,10 @@ def _scenes(every_ms: int, fade_ms: int, scenes: list[tuple]) -> list[Cue]:
 
 
 def _heartbeat(t_ms: int) -> list[Cue]:
-    """A soft red lub-dub on the bottom bulb, eased so it glows rather than flashes."""
-    red = (200, 0, 0)
+    """A slow red swell on the bottom bulb, like a heartbeat felt rather than seen."""
     return [
-        Cue(t_ms=t_ms, target="bottom", rgb=red, brightness=25, fade_ms=150),
-        Cue(t_ms=t_ms + 300, target="bottom", rgb=red, brightness=3, fade_ms=300),
-        Cue(t_ms=t_ms + 700, target="bottom", rgb=red, brightness=18, fade_ms=150),
-        Cue(t_ms=t_ms + 1000, target="bottom", rgb=(40, 0, 20), brightness=2, fade_ms=400),
+        Cue(t_ms=t_ms, target="bottom", rgb=(200, 0, 0), brightness=14, fade_ms=2500),
+        Cue(t_ms=t_ms + 2500, target="bottom", rgb=(40, 0, 20), brightness=2, fade_ms=2500),
     ]
 
 
@@ -81,31 +78,33 @@ BUILTINS: list[Preset] = [
     Preset(name="sunset", description="Amber at the bottom fading into magenta at the top.",
            static={"bottom": {"on": True, "rgb": (255, 110, 20), "brightness": 70},
                    "top": {"on": True, "rgb": (200, 40, 120), "brightness": 60}}),
-    Preset(name="campfire", description="Warm orange flicker.", timeline=_loop(4000, [
-        Cue(t_ms=0, on=True, rgb=(255, 90, 10), brightness=55, fade_ms=300),
-        Cue(t_ms=400, target="top", rgb=(255, 70, 5), brightness=40, fade_ms=500),
-        Cue(t_ms=700, target="bottom", rgb=(255, 120, 20), brightness=65, fade_ms=400),
-        Cue(t_ms=1300, rgb=(255, 80, 8), brightness=48, fade_ms=600),
-        Cue(t_ms=2100, target="top", rgb=(255, 100, 15), brightness=58, fade_ms=500),
-        Cue(t_ms=2600, target="bottom", rgb=(240, 60, 5), brightness=45, fade_ms=700),
-        Cue(t_ms=3400, rgb=(255, 90, 10), brightness=55, fade_ms=500),
-    ])),
+    Preset(name="campfire", description="Glowing embers: warm oranges breathing slowly, no flicker.",
+           timeline=_loop(12_000, [
+               Cue(t_ms=0, on=True, rgb=(255, 90, 10), brightness=50, fade_ms=2000),
+               Cue(t_ms=2000, target="top", rgb=(255, 75, 5), brightness=42, fade_ms=2500),
+               Cue(t_ms=2000, target="bottom", rgb=(255, 110, 18), brightness=56, fade_ms=2500),
+               Cue(t_ms=4500, target="top", rgb=(255, 100, 15), brightness=54, fade_ms=2500),
+               Cue(t_ms=4500, target="bottom", rgb=(250, 80, 8), brightness=45, fade_ms=2500),
+               Cue(t_ms=7000, target="top", rgb=(255, 85, 8), brightness=46, fade_ms=2500),
+               Cue(t_ms=7000, target="bottom", rgb=(255, 120, 20), brightness=58, fade_ms=2500),
+               Cue(t_ms=9500, rgb=(255, 90, 10), brightness=50, fade_ms=2500),
+           ])),
     Preset(name="ocean", description="Slow blue and teal drift.", timeline=_loop(20_000, [
         Cue(t_ms=0, on=True, target="top", rgb=(0, 90, 255), brightness=60, fade_ms=5000),
         Cue(t_ms=0, on=True, target="bottom", rgb=(0, 200, 170), brightness=60, fade_ms=5000),
         Cue(t_ms=10_000, target="top", rgb=(0, 200, 170), fade_ms=9000),
         Cue(t_ms=10_000, target="bottom", rgb=(0, 90, 255), fade_ms=9000),
     ])),
-    Preset(name="cozy", description="Low warm amber with a slow breathe.", timeline=_loop(8000, [
-        Cue(t_ms=0, on=True, rgb=(255, 120, 40), brightness=45, fade_ms=4000),
-        Cue(t_ms=4000, rgb=(255, 100, 30), brightness=25, fade_ms=4000),
-    ])),
-    Preset(name="party", description="Fast color cycle, top and bottom offset.", timeline=_loop(4000, [
-        Cue(t_ms=i * 500, on=True, target=bulb, rgb=rgb, brightness=100, fade_ms=400)
-        for i, rgb in enumerate([(255, 0, 80), (255, 140, 0), (0, 220, 120), (0, 120, 255),
-                                 (160, 0, 255), (255, 0, 160), (255, 220, 0), (0, 255, 220)])
-        for bulb, rgb in (("top", rgb), ("bottom", rgb[::-1]))
-    ])),
+    Preset(name="cozy", description="Still, warm gradient: deep amber glow below fading into soft peach above.",
+           static={"bottom": {"on": True, "rgb": (255, 120, 40), "brightness": 45},
+                   "top": {"on": True, "rgb": (255, 170, 110), "brightness": 25}}),
+    Preset(name="party", description="Bright colors gliding around the wheel, top and bottom offset.",
+           timeline=_loop(36_000, [
+               Cue(t_ms=i * 4500, on=True, target=bulb, rgb=rgb, brightness=100, fade_ms=4300)
+               for i, rgb in enumerate([(255, 0, 80), (255, 140, 0), (0, 220, 120), (0, 120, 255),
+                                        (160, 0, 255), (255, 0, 160), (255, 220, 0), (0, 255, 220)])
+               for bulb, rgb in (("top", rgb), ("bottom", rgb[::-1]))
+           ])),
     Preset(name="night light", description="Very dim red-amber.",
            static={"all": {"on": True, "rgb": (255, 60, 0), "brightness": 5}}),
     Preset(name="trippy", description="Slow late-night DJ set: deep saturated colors melting into each other.",
@@ -122,9 +121,9 @@ BUILTINS: list[Preset] = [
     Preset(name="dark side of the moon",
            description="Mostly darkness, a heartbeat, then white light splits slowly into a spectrum.",
            timeline=_loop(60_000, [
-               Cue(t_ms=0, on=True, target="top", rgb=(20, 0, 60), brightness=2, fade_ms=3000),
-               Cue(t_ms=0, on=True, target="bottom", rgb=(40, 0, 20), brightness=2, fade_ms=3000),
-               *_heartbeat(4000), *_heartbeat(6500),
+               Cue(t_ms=0, on=True, target="top", rgb=(20, 0, 60), brightness=2, fade_ms=4000),
+               Cue(t_ms=0, on=True, target="bottom", rgb=(40, 0, 20), brightness=2, fade_ms=4000),
+               *_heartbeat(4500),
                Cue(t_ms=10_000, target="top", rgb=(255, 255, 255), brightness=20, fade_ms=4000),
                *[Cue(t_ms=16_000 + i * 5000, target="bottom", rgb=rgb, brightness=40, fade_ms=4000)
                  for i, rgb in enumerate([(255, 0, 0), (255, 100, 0), (255, 220, 0),

@@ -41,7 +41,7 @@ def test_wall_clock_jump_triggers_wake_handler():
 
 async def test_wake_completes_expired_fade(tmp_path):
     lamp, _ = await make_lamp(tmp_path)
-    mgr = ActivityManager(lamp, FakeClock(), tick_hz=1000)
+    mgr = ActivityManager(lamp, FakeClock(), tick_hz=1000, smoothing=None)
     await mgr.play(Timeline(cues=[Cue(t_ms=0, brightness=1, on=False, fade_ms=60_000)], duration_ms=60_000),
                    start_loop=False)
     mgr.step()
@@ -59,7 +59,7 @@ async def test_wake_completes_expired_fade(tmp_path):
 
 async def test_wake_keeps_looping_effect(tmp_path):
     lamp, _ = await make_lamp(tmp_path)
-    mgr = ActivityManager(lamp, FakeClock(), tick_hz=1000)
+    mgr = ActivityManager(lamp, FakeClock(), tick_hz=1000, smoothing=None)
     await mgr.play(Timeline(cues=[Cue(t_ms=0, rgb=(1, 2, 3))], duration_ms=1000, loop=True), start_loop=False)
 
     async def refresh():
