@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     port: int = 8443
     data_dir: Path = Path("data")
     certs_dir: Path = Path("certs")
+    static_dir: Path = Path(__file__).resolve().parents[2] / "web" / "static"
+    dev_noauth: bool = False  # LAMP_DEV_NOAUTH-style escape hatch for screenshots; never in .env
 
     max_updates_per_sec: float = 10.0
     sync_offset_ms: int = 0
