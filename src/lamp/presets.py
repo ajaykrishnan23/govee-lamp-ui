@@ -118,6 +118,19 @@ BUILTINS: list[Preset] = [
                ((0, 200, 180), 35, (0, 80, 255), 55),    # teal over blue
                ((90, 0, 255), 25, (40, 0, 180), 25),     # dip and breathe before it starts over
            ]))),
+    Preset(name="saturday afternoon rain",
+           description="Grey-blue rainy daylight above, a warm reading-lamp glow below; clouds drift slowly past.",
+           timeline=_loop(40_000, [
+               Cue(t_ms=0, on=True, target="top", rgb=(150, 170, 200), brightness=35, fade_ms=6000),
+               Cue(t_ms=0, on=True, target="bottom", rgb=(255, 150, 70), brightness=30, fade_ms=6000),
+               Cue(t_ms=8000, target="top", rgb=(125, 145, 185), brightness=28, fade_ms=8000),     # cloud thickens
+               Cue(t_ms=8000, target="bottom", rgb=(255, 140, 60), brightness=34, fade_ms=8000),   # inside feels cozier
+               Cue(t_ms=18_000, target="top", rgb=(160, 178, 205), brightness=38, fade_ms=7000),   # a lighter patch
+               Cue(t_ms=26_000, target="top", rgb=(135, 155, 195), brightness=30, fade_ms=7000),
+               Cue(t_ms=26_000, target="bottom", rgb=(255, 155, 75), brightness=28, fade_ms=7000),
+               Cue(t_ms=34_000, target="top", rgb=(150, 170, 200), brightness=35, fade_ms=6000),
+               Cue(t_ms=34_000, target="bottom", rgb=(255, 150, 70), brightness=30, fade_ms=6000),
+           ])),
     Preset(name="dark side of the moon",
            description="Mostly darkness, a heartbeat, then white light splits slowly into a spectrum.",
            timeline=_loop(60_000, [

@@ -17,10 +17,10 @@ def flashes_per_sec(tl: Timeline, bulb: str) -> float:
 def test_builtin_names():
     assert {p.name for p in BUILTINS} >= {
         "warm white", "reading", "study", "sunset", "campfire", "ocean", "cozy", "party", "night light",
-        "trippy", "dark side of the moon"}
+        "trippy", "dark side of the moon", "saturday afternoon rain"}
 
 
-@pytest.mark.parametrize("name", ["trippy", "dark side of the moon"])
+@pytest.mark.parametrize("name", ["trippy", "dark side of the moon", "saturday afternoon rain"])
 def test_slow_moods_loop_slowly_and_never_snap(name):
     from lamp.presets import BUILTINS
     p = next(p for p in BUILTINS if p.name == name)
