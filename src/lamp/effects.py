@@ -118,6 +118,10 @@ class ActivityManager:
                 except Exception:
                     log.exception("activity listener failed")
 
+    def skip(self, ms: float) -> None:
+        """Move the playhead forward (used after the Mac wakes from sleep)."""
+        self._t0 -= ms
+
     def position_ms(self) -> float:
         return self._position_fn() if self._position_fn else self.clock.now_ms() - self._t0
 

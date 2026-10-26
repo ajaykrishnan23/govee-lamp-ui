@@ -33,7 +33,7 @@ def cmd_serve(_args) -> None:
     from .runtime import build_app
 
     s = get_settings()
-    app, _ = build_app(s)
+    app, _ = build_app(s, keep_awake=True)
     cert, key = s.certs_dir / "lamp.pem", s.certs_dir / "lamp-key.pem"
     ssl = {"ssl_certfile": str(cert), "ssl_keyfile": str(key)} if cert.exists() and key.exists() else {}
     if not ssl:
@@ -72,6 +72,39 @@ To trust them on your iPhone (once):
 Then open https://{names[0]}:{s.port} in Chrome.""")
 
 
+def cmd_install_agent(_args) -> None:
+    import os
+    from pathlib import Path
+
+    from .resilience import agent_path, agent_plist
+
+    uv = shutil.which("uv")
+    if not uv:
+        sys.exit("uv not found on PATH")
+    repo = Path.cwd().resolve()
+    if not (repo / "pyproject.toml").exists():
+        sys.exit("run this from the project folder")
+    (repo / "data").mkdir(exist_ok=True)
+    path = agent_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    domain = f"gui/{os.getuid()}"
+    subprocess.run(["launchctl", "bootout", domain, str(path)], capture_output=True)  # replace any old copy
+    path.write_bytes(agent_plist(repo, uv))
+    subprocess.run(["launchctl", "bootstrap", domain, str(path)], check=True)
+    print(f"Installed {path}. The lamp server now starts at login; logs in data/lamp.log")
+
+
+def cmd_uninstall_agent(_args) -> None:
+    import os
+
+    from .resilience import agent_path
+
+    path = agent_path()
+    subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}", str(path)], capture_output=True)
+    path.unlink(missing_ok=True)
+    print("Removed the login agent.")
+
+
 def _todo(name):
     def run(_args):
         sys.exit(f"`lamp {name}` isn't built yet.")
@@ -87,8 +120,8 @@ def main() -> None:
         ("discover", cmd_discover, "list bulbs on the LAN"),
         ("certs", cmd_certs, "make HTTPS certificates with mkcert"),
         ("spotify-login", _todo("spotify-login"), "connect Spotify (one time)"),
-        ("install-agent", _todo("install-agent"), "start the app at login"),
-        ("uninstall-agent", _todo("uninstall-agent"), "stop starting at login"),
+        ("install-agent", cmd_install_agent, "start the app at login"),
+        ("uninstall-agent", cmd_uninstall_agent, "stop starting at login"),
     ]:
         sub.add_parser(name, help=help).set_defaults(fn=fn)
     args = p.parse_args()

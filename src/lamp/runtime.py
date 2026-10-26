@@ -15,6 +15,7 @@ from .effects import ActivityManager, MonotonicClock
 from .govee.transport import GoveeTransport
 from .lamp import Lamp
 from .presets import PresetStore
+from .resilience import KeepAwake, WakeWatcher, handle_wake
 from .voice import Transcriber
 from .web.app import create_app
 from .web.auth import SessionSigner
@@ -81,8 +82,31 @@ def build_services(settings: Settings, transport=None, ai_client=None, discover_
     return svc
 
 
-def build_app(settings: Settings, **overrides):
+REDISCOVER_EVERY_S = 600
+
+
+async def maintenance(svc: Services, tick_s: float = 5.0) -> None:
+    """Background upkeep: recover after sleep, and rediscover bulbs now and then (DHCP changes)."""
+    watcher = WakeWatcher()
+    since_refresh = 0.0
+    while True:
+        await asyncio.sleep(tick_s)
+        since_refresh += tick_s
+        try:
+            if (jump := watcher.check()) is not None:
+                await handle_wake(svc.lamp, svc.activity, jump)
+                since_refresh = 0
+            elif since_refresh >= REDISCOVER_EVERY_S:
+                await svc.lamp.refresh()
+                since_refresh = 0
+        except Exception:
+            log.exception("maintenance step failed")
+
+
+def build_app(settings: Settings, keep_awake: bool = False, **overrides):
     svc = build_services(settings, **overrides)
+    if keep_awake:
+        svc.activity.on_kind_change(KeepAwake().on_kind)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -94,7 +118,9 @@ def build_app(settings: Settings, **overrides):
             log.exception("initial bulb discovery failed")
         if hasattr(svc.transcriber, "_load"):  # warm the fallback model so the first voice clip isn't slow
             asyncio.get_running_loop().run_in_executor(None, svc.transcriber._load)
+        upkeep = asyncio.create_task(maintenance(svc))
         yield
+        upkeep.cancel()
         await svc.activity.stop()
         if hasattr(svc.transport, "close"):
             await svc.transport.close()
