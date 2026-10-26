@@ -1,0 +1,10 @@
+.env
+data/
+certs/
+.venv/
+web/node_modules/
+web/static/app.css
+tmp/
+__pycache__/
+.superpowers/
+.claude/settings.local.json
